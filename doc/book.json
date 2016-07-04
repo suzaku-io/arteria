@@ -1,0 +1,16 @@
+{
+  "gitbook": "2.5.x",
+  "plugins": ["editlink", "prism", "-highlight", "github"],
+  "pluginsConfig": {
+    "editlink": {
+      "base": "https://github.com/ochrons/arteria/tree/master/doc",
+      "label": "Edit This Page"
+    },
+    "github": {
+      "url": "https://github.com/ochrons/arteria/"
+    }
+  },
+  "variables": {
+    "version": "0.1.0-SNAPSHOT"
+  }
+}
