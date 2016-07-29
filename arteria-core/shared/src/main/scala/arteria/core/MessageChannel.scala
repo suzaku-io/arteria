@@ -37,12 +37,10 @@ trait MessageChannelHandler[P <: Protocol] {
     * @param id            Channel identifier
     * @param globalId      Global channel identifier
     * @param parent        Parent channel
-    * @param metadata      Metadata for materialization
-    * @param contextReader A reader for reading channel context data
+    * @param channelReader A reader for reading child channel creation and context data
     * @return Newly materialized channel
     */
-  def materializeChannel(id: Int, globalId: Int, parent: MessageChannelBase, metadata: ChannelProtocol#MaterializeMetadata,
-    contextReader: ChannelReader): MessageChannelBase = ???
+  def materializeChildChannel(id: Int, globalId: Int, parent: MessageChannelBase, channelReader: ChannelReader): MessageChannelBase = ???
 
   /**
     * A child channel will close immediately. Use to perform internal clean-up
@@ -69,9 +67,6 @@ trait MessageChannelHandler[P <: Protocol] {
   * Base functionality for a message channel
   */
 trait MessageChannelBase {
-  type MaterializeMetadata
-  def materializeMetadataPickler: Pickler[MaterializeMetadata]
-
   protected[core] var subChannels = IntMap.empty[MessageChannelBase]
   protected[core] val channelIdx = new AtomicInteger(1)
 
@@ -92,35 +87,15 @@ trait MessageChannelBase {
 
   /**
     * Receives and drops a message
+    *
     * @param channelReader Reader for accessing pickled message data
     */
   def receiveDrop(channelReader: ChannelReader): Unit
 
   /**
-    * Creates a new child channel with the given protocol and parameters
-    *
-    * @param protocol Protocol for the new child channel
-    * @param handler  Handler for the channel
-    * @param context  Context to be passed to the channel
-    * @param metadata Metadata that is used to materialize the channel at the other end
-    * @tparam P Protocol type
-    * @return Newly created channel
-    */
-  def createChannel[P <: Protocol](protocol: P)
-    (handler: MessageChannelHandler[P], context: protocol.ChannelContext, metadata: MaterializeMetadata): MessageChannel[P] = {
-    val channelId = channelIdx.getAndIncrement()
-    val channelGlobalId = router.nextGlobalId
-    val channel = new MessageChannel(protocol)(channelId, channelGlobalId, this, handler, context)
-    subChannels = subChannels.updated(channelId, channel)
-    // inform our counterpart and get our global id
-    router.establishChannel(channel, context, metadata)(protocol.contextPickler, materializeMetadataPickler)
-    channel
-  }
-
-  /**
     * Close a previously created child channel.
     *
-    * @param channel
+    * @param channel The channel to be closed
     */
   def closeChannel(channel: MessageChannelBase): Unit = {
     if (subChannels.contains(channel.id)) {
@@ -142,7 +117,7 @@ trait MessageChannelBase {
     * @param channelReader        Reader for accessing the data stream
     * @return
     */
-  protected[core] def materializeChannel(channelId: Int, channelGlobalId: Int, channelReader: ChannelReader): MessageChannelBase
+  protected[core] def materializeChildChannel(channelId: Int, channelGlobalId: Int, channelReader: ChannelReader): MessageChannelBase
 
   /**
     * Called when a child channel is closed.
@@ -184,9 +159,6 @@ class MessageChannel[P <: Protocol](val protocol: P)(
   val context: P#ChannelContext
 ) extends MessageChannelBase {
 
-  override type MaterializeMetadata = protocol.MaterializeMetadata
-  override def materializeMetadataPickler: Pickler[MaterializeMetadata] = protocol.materializeMetadataPickler
-
   /**
     * Sends a message on this channel. Message type is checked using an implicit `MessageWitness`.
     *
@@ -204,13 +176,12 @@ class MessageChannel[P <: Protocol](val protocol: P)(
   }
 
   override def receiveDrop(channelReader: ChannelReader): Unit = {
-    val msg = channelReader.read(protocol.messagePickler)
+    channelReader.read(protocol.messagePickler)
+    ()
   }
 
-  protected[core] override def materializeChannel(channelId: Int, globalId: Int, channelReader: ChannelReader): MessageChannelBase = {
-    // read the metadata
-    val metadata = channelReader.read(protocol.materializeMetadataPickler)
-    val channel = handler.materializeChannel(id, globalId: Int, this, metadata, channelReader)
+  protected[core] override def materializeChildChannel(channelId: Int, globalId: Int, channelReader: ChannelReader): MessageChannelBase = {
+    val channel = handler.materializeChildChannel(id, globalId: Int, this, channelReader)
     subChannels = subChannels.updated(id, channel)
     channel.established()
     channel
@@ -234,6 +205,28 @@ class MessageChannel[P <: Protocol](val protocol: P)(
   override def close(): Unit = {
     super.close()
     handler.closed()
+  }
+
+  /**
+    * Creates a new child channel with the given protocol and parameters
+    *
+    * @param protocol         Protocol for the new child channel
+    * @param handler          Handler for the channel
+    * @param context          Context to be passed to the channel
+    * @param materializeChild Metadata that is used to materialize the channel at the other end
+    * @tparam CP Protocol type
+    * @return Newly created channel
+    */
+  def createChannel[MaterializeChild, CP <: Protocol](protocol: CP)
+    (handler: MessageChannelHandler[CP], context: protocol.ChannelContext, materializeChild: MaterializeChild)
+    (implicit materializeChildPickler: Pickler[MaterializeChild]): MessageChannel[CP] = {
+    val channelId = channelIdx.getAndIncrement()
+    val channelGlobalId = router.nextGlobalId
+    val channel = new MessageChannel(protocol)(channelId, channelGlobalId, this, handler, context)
+    subChannels = subChannels.updated(channelId, channel)
+    // inform our counterpart
+    router.establishChannel(channel, context, materializeChild)(protocol.contextPickler, materializeChildPickler)
+    channel
   }
 }
 

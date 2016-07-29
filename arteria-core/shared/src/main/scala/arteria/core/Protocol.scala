@@ -1,9 +1,15 @@
 package arteria.core
 
-import boopickle.{CompositePickler, Pickler}
+import boopickle.{BasicPicklers, CompositePickler, Pickler}
 
 import scala.annotation.implicitNotFound
 
+/**
+  * Provides evidence that a message of type `A` (or any of its descendants) is valid for protocol `P`
+  *
+  * @tparam A Message type
+  * @tparam P Protocol type
+  */
 @implicitNotFound("Message of type ${A} is not valid for protocol ${P}")
 trait MessageWitness[-A <: Message, P]
 
@@ -17,11 +23,6 @@ trait Protocol {
     * Type for the context that gets passed to the channel
     */
   type ChannelContext
-
-  /**
-    * Type for the metadata that is sent over the wire when a new channel is materialized.
-    */
-  type MaterializeMetadata
 
   /**
     * A pickler for all the supported message types in this protocol
@@ -38,19 +39,13 @@ trait Protocol {
   def contextPickler: Pickler[ChannelContext]
 
   /**
-    * A pickler for the metadata type that is used when materializing new channels
-    *
-    * @return
-    */
-  def materializeMetadataPickler: Pickler[MaterializeMetadata]
-
-  /**
     * Materializes a message channel when requested by the router
-    * @param id Channel ID
+    *
+    * @param id       Channel ID
     * @param globalId Global channel ID
-    * @param router Instance of a `MessageRouter`
-    * @param handler Handler for this channel
-    * @param context Initial context for the channel
+    * @param router   Instance of a `MessageRouter`
+    * @param handler  Handler for this channel
+    * @param context  Initial context for the channel
     * @return Materialized channel
     */
   def materializeChannel(id: Int, globalId: Int, router: MessageRouterBase, handler: MessageChannelHandler[This],

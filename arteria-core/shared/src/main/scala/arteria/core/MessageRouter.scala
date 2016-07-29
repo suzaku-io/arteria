@@ -16,23 +16,23 @@ object MessageRouter {
   final val RouterChannelId = 0
 
   sealed trait ChannelState {
-    def isOpen: Boolean
+    def canSend: Boolean
   }
 
   case object StateOpening extends ChannelState {
-    override def isOpen: Boolean = true
+    override def canSend: Boolean = true
   }
 
   case object StateEstablished extends ChannelState {
-    override def isOpen: Boolean = true
+    override def canSend: Boolean = true
   }
 
   case object StateClosed extends ChannelState {
-    override def isOpen: Boolean = false
+    override def canSend: Boolean = false
   }
 
   case object StateClosing extends ChannelState {
-    override def isOpen: Boolean = false
+    override def canSend: Boolean = false
   }
 
   case class Channel(channel: MessageChannelBase, state: ChannelState)
@@ -63,9 +63,9 @@ object MessageRouter {
 /**
   * External interface for the router.
   *
-  * @tparam CMD Type for CreationMetadata, used when creating new channels under the router
+  * @tparam MaterializeChild Type for materialization metadata, used when creating new channels under the router
   */
-trait MessageRouterHandler[CMD] {
+trait MessageRouterHandler[MaterializeChild] {
   /**
     * Builds a new instance of `PickleState` when needed for pickling messages.
     */
@@ -77,16 +77,17 @@ trait MessageRouterHandler[CMD] {
   def unpickleStateFactory(bb: ByteBuffer): UnpickleState = new UnpickleState(new DecoderSpeed(bb), false, false)
 
   /**
-    * Called when a new channel needs to be created under the router.
+    * Called when a new child channel needs to be created under the router.
     *
-    * @param id            Channel identifier
-    * @param globalId      Global identifier for the channel
-    * @param router        The router
-    * @param metadata      Metadata needed for creating a correct channel
-    * @param contextReader Reader for reading additional data from the stream
+    * @param id                    Channel identifier
+    * @param globalId              Global identifier for the channel
+    * @param router                The router
+    * @param materializeChild      Metadata needed for creating a correct channel
+    * @param contextReader         Reader for reading additional data from the stream
     * @return A newly created `MessageChannel`
     */
-  def materializeChannel(id: Int, globalId: Int, router: MessageRouterBase, metadata: CMD, contextReader: ChannelReader): MessageChannelBase
+  def materializeChildChannel(id: Int, globalId: Int, router: MessageRouterBase, materializeChild: MaterializeChild,
+    contextReader: ChannelReader): MessageChannelBase
 
   /**
     * Called when a child channel will be closed.
@@ -99,6 +100,12 @@ trait MessageRouterHandler[CMD] {
     * Called when the router itself is closing due to a request from the other router.
     */
   def routerWillClose(): Unit = {}
+
+  /**
+    * Called when a message has been queued by the router. This callback can be used to determine when
+    * there are pending messages that can be flushed.
+    */
+  def messagesPending(count: Int): Unit = {}
 }
 
 /**
@@ -152,18 +159,16 @@ trait MessageRouterBase extends MessageChannelBase {
   *
   * @param handler   Handler for this router instance
   * @param isPrimary Set to `true` is this is the primary router. The other router will then be the secondary
-  * @tparam CMD Type for CreationMetadata, used when creating new channels under the router
+  * @tparam MaterializeChild Type for materialization metadata, used when creating new channels under the router
   */
-class MessageRouter[CMD: Pickler](handler: MessageRouterHandler[CMD], isPrimary: Boolean) extends MessageRouterBase {
+class MessageRouter[MaterializeChild: Pickler](handler: MessageRouterHandler[MaterializeChild], isPrimary: Boolean) extends MessageRouterBase {
   import MessageRouter._
-
-  override type MaterializeMetadata = CMD
-  override def materializeMetadataPickler: Pickler[MaterializeMetadata] = implicitly[Pickler[CMD]]
 
   // TODO: implement a faster storage for channels
   protected[core] var globalChannels = IntMap[Channel](0 -> Channel(this, StateOpening))
   protected[core] val globalChannelIdx = new AtomicInteger(if (isPrimary) 0x1000 else 0x08001000)
   protected var pickleState: PickleState = _
+  protected var pendingCount = 0
 
   override def id = RouterChannelId
 
@@ -185,19 +190,15 @@ class MessageRouter[CMD: Pickler](handler: MessageRouterHandler[CMD], isPrimary:
     // reset state
     pickleState = handler.pickleStateFactory
     pickleState.enc.writeInt(StartTag)
+    pendingCount = 0
   }
 
   /**
-    * Returns a `ByteBuffer` containing serialized messages and reset state
+    * Checks if there are pending messages that have not been flushed.
+    *
+    * @return
     */
-  def flush(): ByteBuffer = {
-    // mark end of messages
-    pickleState.enc.writeInt(EndTag)
-    // extract data from current pickle state
-    val output = pickleState.toByteBuffer
-    reset()
-    output
-  }
+  def hasPending = pendingCount > 0
 
   /**
     * Returns a `PickleState` containing serialized messages and reset state. This allows
@@ -209,6 +210,13 @@ class MessageRouter[CMD: Pickler](handler: MessageRouterHandler[CMD], isPrimary:
     val ps = pickleState
     reset()
     ps
+  }
+
+  /**
+    * Returns a `ByteBuffer` containing serialized messages and reset state
+    */
+  def flush(): ByteBuffer = {
+    flushState().toByteBuffer
   }
 
   /**
@@ -266,16 +274,19 @@ class MessageRouter[CMD: Pickler](handler: MessageRouterHandler[CMD], isPrimary:
   }
 
   override def receiveDrop(channelReader: ChannelReader): Unit = {
-    val msg = channelReader.read[RouterMessage]
+    channelReader.read[RouterMessage]
+    ()
   }
 
   override def send(message: Message, channelGlobalId: Int)(implicit messagePickler: Pickler[Message]): Unit = {
     globalChannels.get(channelGlobalId) match {
-      case Some(Channel(channel, state)) if state.isOpen =>
+      case Some(Channel(channel, state)) if state.canSend =>
+        pendingCount += 1
         pickleState.enc.writeInt(channelGlobalId | MessageTag)
         pickleState.pickle(message)
+        handler.messagesPending(pendingCount)
       case _ =>
-        // ignore otherwise
+      // ignore otherwise
     }
   }
 
@@ -294,7 +305,7 @@ class MessageRouter[CMD: Pickler](handler: MessageRouterHandler[CMD], isPrimary:
       case EstablishChannel(channelGlobalId, channelId, parentGlobalId) =>
         globalChannels.get(parentGlobalId) match {
           case Some(Channel(parent, StateEstablished)) =>
-            val channel = parent.materializeChannel(channelId, channelGlobalId, channelReader)
+            val channel = parent.materializeChildChannel(channelId, channelGlobalId, channelReader)
             globalChannels = globalChannels.updated(channelGlobalId, Channel(channel, StateEstablished))
           case Some(Channel(_, _)) =>
           // ignore in other states
@@ -363,9 +374,31 @@ class MessageRouter[CMD: Pickler](handler: MessageRouterHandler[CMD], isPrimary:
     }
   }
 
-  protected[core] override def materializeChannel(channelId: Int, globalId: Int, channelReader: ChannelReader): MessageChannelBase = {
-    val subMetadata = channelReader.read[CMD]
-    val channel = handler.materializeChannel(channelId, globalId, this, subMetadata, channelReader)
+  /**
+    * Creates a new child channel with the given protocol and parameters
+    *
+    * @param protocol         Protocol for the new child channel
+    * @param handler          Handler for the channel
+    * @param context          Context to be passed to the channel
+    * @param materializeChild Metadata that is used to materialize the channel at the other end
+    * @tparam CP Protocol type
+    * @return Newly created channel
+    */
+  def createChannel[CP <: Protocol](protocol: CP)
+    (handler: MessageChannelHandler[CP], context: protocol.ChannelContext, materializeChild: MaterializeChild)
+    (implicit materializeChildPickler: Pickler[MaterializeChild]): MessageChannel[CP] = {
+    val channelId = channelIdx.getAndIncrement()
+    val channelGlobalId = router.nextGlobalId
+    val channel = new MessageChannel(protocol)(channelId, channelGlobalId, this, handler, context)
+    subChannels = subChannels.updated(channelId, channel)
+    // inform our counterpart
+    router.establishChannel(channel, context, materializeChild)(protocol.contextPickler, materializeChildPickler)
+    channel
+  }
+
+  protected[core] override def materializeChildChannel(channelId: Int, globalId: Int, channelReader: ChannelReader): MessageChannelBase = {
+    val subMetadata = channelReader.read[MaterializeChild]
+    val channel = handler.materializeChildChannel(channelId, globalId, this, subMetadata, channelReader)
     channel.established()
     channel
   }

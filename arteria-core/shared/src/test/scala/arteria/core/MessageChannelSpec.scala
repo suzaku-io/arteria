@@ -6,10 +6,6 @@ import boopickle.Default._
 import boopickle.{DecoderSpeed, EncoderSpeed}
 
 import arteria.UnitSpec
-import arteria.core.SystemProtocol.MaterializeMetadata
-
-object SystemChannel {
-}
 
 sealed trait MainChannelMetadata
 
@@ -29,8 +25,6 @@ object SystemProtocol extends Protocol {
 
   case class SystemChannelContext(name: String)
 
-  case class MaterializeMetadata(isTest: Boolean)
-
   sealed trait SystemMessage extends Message
 
   case class System1(i: Int) extends SystemMessage
@@ -42,8 +36,6 @@ object SystemProtocol extends Protocol {
 
   override val contextPickler = implicitly[Pickler[SystemChannelContext]]
 
-  override val materializeMetadataPickler = implicitly[Pickler[MaterializeMetadata]]
-
   override def materializeChannel(id: Int, globalId: Int, router: MessageRouterBase, handler: MessageChannelHandler[This],
     context: SystemChannelContext): MessageChannel[This] = {
     val channel = new MessageChannel(this)(id, globalId, router, handler, context)
@@ -53,7 +45,6 @@ object SystemProtocol extends Protocol {
 
 object RandomProtocol extends Protocol {
   override type ChannelContext = RandomProtocolContext
-  override type MaterializeMetadata = Unit
 
   case class RandomProtocolContext(index: Int)
 
@@ -70,8 +61,6 @@ object RandomProtocol extends Protocol {
   implicit val (messagePickler, testMsg) = defineProtocol(tPickler)
 
   override def contextPickler = implicitly[Pickler[RandomProtocolContext]]
-
-  override def materializeMetadataPickler = implicitly[Pickler[MaterializeMetadata]]
 
   override def materializeChannel(id: Int, globalId: Int, router: MessageRouterBase, handler: MessageChannelHandler[RandomProtocol.This],
     context: RandomProtocolContext): MessageChannel[RandomProtocol.This] = {
@@ -114,9 +103,11 @@ class TestSystemHandler extends MessageChannelHandler[SystemProtocol.type] {
     println(s"System received: $message")
     receivedMessages :+= message
   }
-  override def materializeChannel(id: Int, globalId: Int, parent: MessageChannelBase, metadata: MaterializeMetadata,
-    contextReader: ChannelReader): MessageChannelBase = {
-    val context = contextReader.read[RandomProtocol.ChannelContext]
+
+  override def materializeChildChannel(id: Int, globalId: Int, parent: MessageChannelBase, channelReader: ChannelReader): MessageChannelBase = {
+    val materializeChild = channelReader.read[String]
+    assert(materializeChild == "random")
+    val context = channelReader.read[RandomProtocol.ChannelContext]
     val channel = new MessageChannel(RandomProtocol)(id, globalId, parent, new RandomHandler, context)
     channel
   }
@@ -128,16 +119,16 @@ class TestRouterHandler(val systemHandler: MessageChannelHandler[SystemProtocol.
   var materializeRequests = Vector.empty[Int]
   var closeRequests = Vector.empty[Int]
 
-  override def unpickleStateFactory(bb: ByteBuffer): UnpickleState =
-    new UnpickleState(new DecoderSpeed(bb), false, false)
-
   override def pickleStateFactory: PickleState =
     new PickleState(new EncoderSpeed(), false, false)
 
-  override def materializeChannel(id: Int, globalId: Int, router: MessageRouterBase, metadata: MainChannelMetadata,
+  override def unpickleStateFactory(bb: ByteBuffer): UnpickleState =
+    new UnpickleState(new DecoderSpeed(bb), false, false)
+
+  override def materializeChildChannel(id: Int, globalId: Int, router: MessageRouterBase, materializeChild: MainChannelMetadata,
     contextReader: ChannelReader): MessageChannelBase = {
     materializeRequests :+= globalId
-    metadata match {
+    materializeChild match {
       case CreateSystemChannel =>
         println(s"createChannel called with id = $id")
         val context = contextReader.read[SystemChannelContext]
@@ -155,7 +146,7 @@ class MessageChannelSpec extends UnitSpec {
 
   def routerHandler(systemHandler: MessageChannelHandler[SystemProtocol.type]) = new TestRouterHandler(systemHandler)
 
-  def router(handler: MessageRouterHandler[MainChannelMetadata], isPrimary: Boolean) = new MessageRouter[MainChannelMetadata](handler, isPrimary)
+  def router(handler: MessageRouterHandler[MainChannelMetadata], isPrimary: Boolean) = new MessageRouter(handler, isPrimary)
 
   def defaultRouterA = router(new TestRouterHandler(new TestSystemHandler), true)
 
@@ -168,8 +159,7 @@ class MessageChannelSpec extends UnitSpec {
     val systemHandlerB = new TestSystemHandler
     val routerB = router(new TestRouterHandler(systemHandlerB), false)
     val channel = routerA.createChannel(SystemProtocol)(systemHandlerA, SystemChannelContext("system"), CreateSystemChannel)
-    val bb = routerA.flush()
-    routerB.receive(bb)
+    runRouters(routerA, routerB)
 
     (routerA, routerB, systemHandlerA, systemHandlerB, channel)
   }
@@ -218,9 +208,10 @@ class MessageChannelSpec extends UnitSpec {
   it should "send a message on the channel" in {
     // init routers and set up channel
     val (routerA, routerB, systemHandlerA, systemHandlerB, channel) = initRouters
-
+    routerA.hasPending shouldBe false
     // send the message
     channel.send(System1(5))
+    routerA.hasPending shouldBe true
     val bb = routerA.flush()
     val data = bb.slice().order(ByteOrder.LITTLE_ENDIAN) // remember to set little endian on the copy
 
@@ -268,7 +259,7 @@ class MessageChannelSpec extends UnitSpec {
     val (routerA, routerB, systemHandlerA, systemHandlerB, channel) = initRouters
 
     val randomHandler = new RandomHandler
-    val randomChannel = channel.createChannel(RandomProtocol)(randomHandler, RandomProtocolContext(42), MaterializeMetadata(true))
+    val randomChannel = channel.createChannel(RandomProtocol)(randomHandler, RandomProtocolContext(42), "random")
     // send a messages
     randomChannel.send(GenRandom(42))
     // allow message to be processed and response message sent and processed

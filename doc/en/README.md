@@ -12,6 +12,14 @@ In addition to high performance messaging, Arteria has following design goals:
 2. Easy serialization of user data into messages
 3. Type safe channel protocol
 
+To use Arteria in your application add following dependency declaration to your Scala project.
+
+<pre><code class="lang-scala">"me.chrons" %% "arteria-core" % "{{ book.version }}"</code></pre>
+
+In a Scala.js project the dependency looks like this.
+
+<pre><code class="lang-scala">"me.chrons" %%% "arteria-core" % "{{ book.version }}"</code></pre>
+
 ## Architecture
 
 The architecture of Arteria is built on a hierarchy of _message channels_. At the root there is a special channel, the `MessageRouter`, that performs the actual
