@@ -126,13 +126,15 @@ class TestRouterHandler(val systemHandler: MessageChannelHandler[SystemProtocol.
     new UnpickleState(new DecoderSpeed(bb), false, false)
 
   override def materializeChildChannel(id: Int, globalId: Int, router: MessageRouterBase, materializeChild: MainChannelMetadata,
-    contextReader: ChannelReader): MessageChannelBase = {
+    contextReader: ChannelReader): Option[MessageChannelBase] = {
     materializeRequests :+= globalId
     materializeChild match {
       case CreateSystemChannel =>
         println(s"createChannel called with id = $id")
         val context = contextReader.read[SystemChannelContext]
-        SystemProtocol.materializeChannel(id, globalId, router, systemHandler, context)
+        Some(SystemProtocol.materializeChannel(id, globalId, router, systemHandler, context))
+      case _ =>
+        None
     }
   }
 

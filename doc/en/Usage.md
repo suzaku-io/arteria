@@ -11,10 +11,10 @@ router. Typically this is represented as a sealed hierarchy of case classes wher
 documentation we will be using two top level channels, _system_ and _UI_, so our type hierarchy looks like this:
 
 ```scala
-sealed trait RouterChildChannel
+sealed abstract class RouterChild
 
-case object CreateSystemChannel extends RouterChildChannel
-case object CreateUIChannel extends RouterChildChannel
+case object CreateSystemChannel extends RouterChild
+case object CreateUIChannel extends RouterChild
 ```
 
 Next we'll define the handler with a minimal implementation.
@@ -22,9 +22,9 @@ Next we'll define the handler with a minimal implementation.
 ```scala
 import arteria.core._
 
-class TopChannelHandler extends MessageRouterHandler[RouterChildChannel] {
-  override def materializeChannel(id: Int, globalId: Int, 
-    router: MessageRouterBase, materializeChild: RouterChildChannel, 
+class TopChannelHandler extends MessageRouterHandler[RouterChild] {
+  override def materializeChildChannel(id: Int, globalId: Int, 
+    router: MessageRouterBase, materializeChild: RouterChild, 
     contextReader: ChannelReader): MessageChannelBase = {
     materializeChild match {
       case CreateSystemChannel => ??? // todo

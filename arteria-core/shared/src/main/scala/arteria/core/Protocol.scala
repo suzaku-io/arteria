@@ -57,7 +57,7 @@ trait Protocol {
     * @tparam A Type of the message (or a root of a message hierarchy)
     * @return
     */
-  protected def witnessFor[A <: Message] = new MessageWitness[A, This] {}
+  protected def witnessFor[A <: Message]: MessageWitness[A, This] = new MessageWitness[A, This] {}
 
   /**
     * Helper function to define a protocol composed of multiple message types
@@ -65,7 +65,7 @@ trait Protocol {
   protected def defineProtocol[M1 <: Message](cp1: CompositePickler[M1]) = (
     new CompositePickler[Message].join(cp1),
     witnessFor[M1]
-    )
+  )
 
   /**
     * Helper function to define a protocol composed of multiple message types
@@ -74,7 +74,7 @@ trait Protocol {
   (cp1: CompositePickler[M1], cp2: CompositePickler[M2]) = (
     new CompositePickler[Message].join(cp1).join(cp2),
     witnessFor[M1], witnessFor[M2]
-    )
+  )
 
   /**
     * Helper function to define a protocol composed of multiple message types
@@ -83,7 +83,7 @@ trait Protocol {
   (cp1: CompositePickler[M1], cp2: CompositePickler[M2], cp3: CompositePickler[M3]) = (
     new CompositePickler[Message].join(cp1).join(cp2).join(cp3),
     witnessFor[M1], witnessFor[M2], witnessFor[M3]
-    )
+  )
 
   /**
     * Helper function to define a protocol composed of multiple message types
@@ -92,14 +92,15 @@ trait Protocol {
   (cp1: CompositePickler[M1], cp2: CompositePickler[M2], cp3: CompositePickler[M3], cp4: CompositePickler[M4]) = (
     new CompositePickler[Message].join(cp1).join(cp2).join(cp3).join(cp4),
     witnessFor[M1], witnessFor[M2], witnessFor[M3], witnessFor[M4]
-    )
+  )
 
   /**
     * Helper function to define a protocol composed of multiple message types
     */
   protected def defineProtocol[M1 <: Message, M2 <: Message, M3 <: Message, M4 <: Message, M5 <: Message]
-  (cp1: CompositePickler[M1], cp2: CompositePickler[M2], cp3: CompositePickler[M3], cp4: CompositePickler[M4], cp5: CompositePickler[M5]) = (
+  (cp1: CompositePickler[M1], cp2: CompositePickler[M2], cp3: CompositePickler[M3], cp4: CompositePickler[M4],
+    cp5: CompositePickler[M5]) = (
     new CompositePickler[Message].join(cp1).join(cp2).join(cp3).join(cp4).join(cp5),
     witnessFor[M1], witnessFor[M2], witnessFor[M3], witnessFor[M4], witnessFor[M5]
-    )
+  )
 }

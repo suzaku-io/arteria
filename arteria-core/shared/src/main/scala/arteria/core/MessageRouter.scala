@@ -87,7 +87,7 @@ trait MessageRouterHandler[MaterializeChild] {
     * @return A newly created `MessageChannel`
     */
   def materializeChildChannel(id: Int, globalId: Int, router: MessageRouterBase, materializeChild: MaterializeChild,
-    contextReader: ChannelReader): MessageChannelBase
+    contextReader: ChannelReader): Option[MessageChannelBase]
 
   /**
     * Called when a child channel will be closed.
@@ -153,7 +153,7 @@ trait MessageRouterBase extends MessageChannelBase {
 }
 
 /**
-  * Message router is a special message channel that sits underneath all other channels. It handler the actual
+  * Message router is a special message channel that sits underneath all other channels. It handles the actual
   * pickling of channel and control messages and maintains an internal list of active channels. When a message
   * is received, the router will route it to the correct `MessageChannel` instance.
   *
@@ -201,8 +201,8 @@ class MessageRouter[MaterializeChild: Pickler](handler: MessageRouterHandler[Mat
   def hasPending = pendingCount > 0
 
   /**
-    * Returns a `PickleState` containing serialized messages and reset state. This allows
-    * the user to continue pickling other data into the same stream.
+    * Returns a `PickleState` containing serialized messages and resets the state. This allows
+    * the caller to continue pickling other data into the same stream.
     */
   def flushState(): PickleState = {
     // mark end of messages
@@ -398,7 +398,7 @@ class MessageRouter[MaterializeChild: Pickler](handler: MessageRouterHandler[Mat
 
   protected[core] override def materializeChildChannel(channelId: Int, globalId: Int, channelReader: ChannelReader): MessageChannelBase = {
     val subMetadata = channelReader.read[MaterializeChild]
-    val channel = handler.materializeChildChannel(channelId, globalId, this, subMetadata, channelReader)
+    val channel = handler.materializeChildChannel(channelId, globalId, this, subMetadata, channelReader).get
     channel.established()
     channel
   }
