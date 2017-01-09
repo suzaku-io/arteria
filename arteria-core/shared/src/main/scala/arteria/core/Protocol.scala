@@ -43,13 +43,15 @@ trait Protocol {
     *
     * @param id       Channel ID
     * @param globalId Global channel ID
-    * @param router   Instance of a `MessageRouter`
+    * @param parent   Parent channel (or router)
     * @param handler  Handler for this channel
     * @param context  Initial context for the channel
     * @return Materialized channel
     */
-  def materializeChannel(id: Int, globalId: Int, router: MessageRouterBase, handler: MessageChannelHandler[This],
+  def materializeChannel(id: Int, globalId: Int, parent: MessageChannelBase, handler: MessageChannelHandler[This],
     context: ChannelContext): MessageChannel[This]
+
+  def emptyHandler: MessageChannelHandler[This] = new MessageChannelHandler[This] {}
 
   /**
     * A helper function to provide evidence (witness) that a message type is supported by this protocol.

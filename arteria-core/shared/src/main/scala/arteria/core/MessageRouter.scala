@@ -298,6 +298,7 @@ class MessageRouter[MaterializeChild: Pickler](handler: MessageRouterHandler[Mat
   def process(message: RouterMessage, channelReader: ChannelReader): Unit = {
     message match {
       case EstablishRoute(otherIsPrimary) =>
+        println(f"Route established")
         if (otherIsPrimary == isPrimary)
           throw new IllegalStateException("Both routers are trying to be primary")
         globalChannels = globalChannels.updated(globalId, Channel(this, StateEstablished))
@@ -305,10 +306,12 @@ class MessageRouter[MaterializeChild: Pickler](handler: MessageRouterHandler[Mat
       case EstablishChannel(channelGlobalId, channelId, parentGlobalId) =>
         globalChannels.get(parentGlobalId) match {
           case Some(Channel(parent, StateEstablished)) =>
+            println(f"Establish channel: $channelGlobalId%08x - $channelId%08x parent $parentGlobalId%08x")
+            send(ChannelEstablished(channelGlobalId))
             val channel = parent.materializeChildChannel(channelId, channelGlobalId, channelReader)
             globalChannels = globalChannels.updated(channelGlobalId, Channel(channel, StateEstablished))
           case Some(Channel(_, _)) =>
-          // ignore in other states
+            throw new IllegalArgumentException(s"EstablishChannel: Parent channel $parentGlobalId was not established")
           case None =>
             throw new IllegalArgumentException(s"EstablishChannel: Parent channel $parentGlobalId was not found")
         }
@@ -316,14 +319,17 @@ class MessageRouter[MaterializeChild: Pickler](handler: MessageRouterHandler[Mat
       case ChannelEstablished(channelGlobalId) =>
         globalChannels.get(channelGlobalId) match {
           case Some(Channel(channel, StateOpening)) =>
+            println(f"Channel $channelGlobalId%08x established")
             globalChannels = globalChannels.updated(channelGlobalId, Channel(channel, StateEstablished))
-          case Some(Channel(channel, _)) =>
+          case Some(Channel(channel, state)) =>
           // ignore other states
+            throw new IllegalArgumentException(s"ChannelEstablished: Channel $channelGlobalId was in state $state")
           case None =>
             throw new IllegalArgumentException(s"ChannelEstablished: Channel $channelGlobalId was not found")
         }
 
       case CloseChannel(channelGlobalId) =>
+        println(f"Channel $channelGlobalId%08x is closing")
         globalChannels.get(channelGlobalId) match {
           case Some(Channel(channel, state)) if state == StateClosed =>
           // channel is already closed on our side, do nothing
@@ -339,6 +345,7 @@ class MessageRouter[MaterializeChild: Pickler](handler: MessageRouterHandler[Mat
         }
 
       case ChannelClosed(channelGlobalId) =>
+        println(f"Channel $channelGlobalId%08x is closed")
         globalChannels.get(channelGlobalId) match {
           case Some(Channel(channel, StateClosing)) =>
             globalChannels = globalChannels.updated(channelGlobalId, Channel(null, StateClosed))

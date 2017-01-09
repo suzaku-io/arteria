@@ -36,9 +36,9 @@ object SystemProtocol extends Protocol {
 
   override val contextPickler = implicitly[Pickler[SystemChannelContext]]
 
-  override def materializeChannel(id: Int, globalId: Int, router: MessageRouterBase, handler: MessageChannelHandler[This],
+  override def materializeChannel(id: Int, globalId: Int, parent: MessageChannelBase, handler: MessageChannelHandler[This],
     context: SystemChannelContext): MessageChannel[This] = {
-    val channel = new MessageChannel(this)(id, globalId, router, handler, context)
+    val channel = new MessageChannel(this)(id, globalId, parent, handler, context)
     channel
   }
 }
@@ -62,9 +62,9 @@ object RandomProtocol extends Protocol {
 
   override def contextPickler = implicitly[Pickler[RandomProtocolContext]]
 
-  override def materializeChannel(id: Int, globalId: Int, router: MessageRouterBase, handler: MessageChannelHandler[RandomProtocol.This],
+  override def materializeChannel(id: Int, globalId: Int, parent: MessageChannelBase, handler: MessageChannelHandler[RandomProtocol.This],
     context: RandomProtocolContext): MessageChannel[RandomProtocol.This] = {
-    val channel = new MessageChannel(this)(id, globalId, router, handler, context)
+    val channel = new MessageChannel(this)(id, globalId, parent, handler, context)
     channel
   }
 }
