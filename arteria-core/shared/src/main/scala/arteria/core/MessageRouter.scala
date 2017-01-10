@@ -252,7 +252,7 @@ class MessageRouter[MaterializeChild: Pickler](handler: MessageRouterHandler[Mat
             case Some(Channel(channel, StateClosing)) =>
               // channel is closing drop incoming messages
               channel.receiveDrop(new ChannelReaderImpl(unpickleState))
-            case Some(Channel(channel, StateClosed)) =>
+            case Some(Channel(_, StateClosed)) =>
               // channel is gone, cannot read its messages
               throw new IllegalStateException(s"Received a message for a closed channel ($channelId)")
             case None =>
@@ -286,6 +286,7 @@ class MessageRouter[MaterializeChild: Pickler](handler: MessageRouterHandler[Mat
         pickleState.pickle(message)
         handler.messagesPending(pendingCount)
       case _ =>
+        println(s"Channel $channelGlobalId cannot send messages")
       // ignore otherwise
     }
   }
@@ -310,6 +311,7 @@ class MessageRouter[MaterializeChild: Pickler](handler: MessageRouterHandler[Mat
             send(ChannelEstablished(channelGlobalId))
             val channel = parent.materializeChildChannel(channelId, channelGlobalId, channelReader)
             globalChannels = globalChannels.updated(channelGlobalId, Channel(channel, StateEstablished))
+            channel.established()
           case Some(Channel(_, _)) =>
             throw new IllegalArgumentException(s"EstablishChannel: Parent channel $parentGlobalId was not established")
           case None =>
@@ -321,6 +323,7 @@ class MessageRouter[MaterializeChild: Pickler](handler: MessageRouterHandler[Mat
           case Some(Channel(channel, StateOpening)) =>
             println(f"Channel $channelGlobalId%08x established")
             globalChannels = globalChannels.updated(channelGlobalId, Channel(channel, StateEstablished))
+            channel.established()
           case Some(Channel(channel, state)) =>
           // ignore other states
             throw new IllegalArgumentException(s"ChannelEstablished: Channel $channelGlobalId was in state $state")
@@ -400,13 +403,14 @@ class MessageRouter[MaterializeChild: Pickler](handler: MessageRouterHandler[Mat
     subChannels = subChannels.updated(channelId, channel)
     // inform our counterpart
     router.establishChannel(channel, context, materializeChild)(protocol.contextPickler, materializeChildPickler)
+    handler.establishing(channel)
     channel
   }
 
   protected[core] override def materializeChildChannel(channelId: Int, globalId: Int, channelReader: ChannelReader): MessageChannelBase = {
     val subMetadata = channelReader.read[MaterializeChild]
     val channel = handler.materializeChildChannel(channelId, globalId, this, subMetadata, channelReader).get
-    channel.established()
+    //channel.established()
     channel
   }
 

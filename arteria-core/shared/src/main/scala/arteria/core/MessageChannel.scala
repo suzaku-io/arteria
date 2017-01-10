@@ -23,6 +23,14 @@ trait MessageChannelHandler[P <: Protocol] {
   type ChannelProtocol = P
 
   /**
+    * Called when a channel is being established. After receiving this callback the channel is
+    * ready to send messages.
+    *
+    * @param channel Channel that is being established
+    */
+  def establishing(channel: MessageChannel[ChannelProtocol]): Unit = {}
+
+  /**
     * Called when a channel has been established. After receiving this callback the channel is
     * ready to accept messages in both directions.
     *
@@ -181,9 +189,8 @@ class MessageChannel[P <: Protocol](val protocol: P)(
   }
 
   protected[core] override def materializeChildChannel(channelId: Int, globalId: Int, channelReader: ChannelReader): MessageChannelBase = {
-    val channel = handler.materializeChildChannel(id, globalId: Int, this, channelReader)
+    val channel = handler.materializeChildChannel(id, globalId, this, channelReader)
     subChannels = subChannels.updated(id, channel)
-    channel.established()
     channel
   }
 
@@ -226,6 +233,7 @@ class MessageChannel[P <: Protocol](val protocol: P)(
     subChannels = subChannels.updated(channelId, channel)
     // inform our counterpart
     router.establishChannel(channel, context, materializeChild)(protocol.contextPickler, materializeChildPickler)
+    handler.establishing(channel)
     channel
   }
 }
