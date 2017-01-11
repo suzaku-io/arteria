@@ -311,6 +311,7 @@ class MessageRouter[MaterializeChild: Pickler](handler: MessageRouterHandler[Mat
             send(ChannelEstablished(channelGlobalId))
             val channel = parent.materializeChildChannel(channelId, channelGlobalId, channelReader)
             globalChannels = globalChannels.updated(channelGlobalId, Channel(channel, StateEstablished))
+            channel.establishing()
             channel.established()
           case Some(Channel(_, _)) =>
             throw new IllegalArgumentException(s"EstablishChannel: Parent channel $parentGlobalId was not established")
@@ -395,14 +396,16 @@ class MessageRouter[MaterializeChild: Pickler](handler: MessageRouterHandler[Mat
     * @return Newly created channel
     */
   def createChannel[CP <: Protocol](protocol: CP)
-    (handler: MessageChannelHandler[CP], context: protocol.ChannelContext, materializeChild: MaterializeChild)
+    (handler: MessageChannelHandler[CP], context: CP#ChannelContext, materializeChild: MaterializeChild)
     (implicit materializeChildPickler: Pickler[MaterializeChild]): MessageChannel[CP] = {
     val channelId = channelIdx.getAndIncrement()
     val channelGlobalId = router.nextGlobalId
     val channel = new MessageChannel(protocol)(channelId, channelGlobalId, this, handler, context)
     subChannels = subChannels.updated(channelId, channel)
     // inform our counterpart
-    router.establishChannel(channel, context, materializeChild)(protocol.contextPickler, materializeChildPickler)
+    router.establishChannel(channel, context, materializeChild)(
+      protocol.contextPickler.asInstanceOf[Pickler[CP#ChannelContext]], materializeChildPickler
+    )
     handler.establishing(channel)
     channel
   }
@@ -410,7 +413,6 @@ class MessageRouter[MaterializeChild: Pickler](handler: MessageRouterHandler[Mat
   protected[core] override def materializeChildChannel(channelId: Int, globalId: Int, channelReader: ChannelReader): MessageChannelBase = {
     val subMetadata = channelReader.read[MaterializeChild]
     val channel = handler.materializeChildChannel(channelId, globalId, this, subMetadata, channelReader).get
-    //channel.established()
     channel
   }
 

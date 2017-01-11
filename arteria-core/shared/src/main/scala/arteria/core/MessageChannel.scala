@@ -135,6 +135,11 @@ trait MessageChannelBase {
   protected[core] def channelClosed(channelId: Int): Unit
 
   /**
+    * Called when channel is being established
+    */
+  protected[core] def establishing(): Unit = {}
+
+  /**
     * Called when the other side has established the channel.
     */
   protected[core] def established(): Unit = {}
@@ -205,6 +210,10 @@ class MessageChannel[P <: Protocol](val protocol: P)(
     }
   }
 
+  protected[core] override def establishing(): Unit = {
+    handler.establishing(this)
+  }
+
   protected[core] override def established(): Unit = {
     handler.established(this)
   }
@@ -225,14 +234,16 @@ class MessageChannel[P <: Protocol](val protocol: P)(
     * @return Newly created channel
     */
   def createChannel[MaterializeChild, CP <: Protocol](protocol: CP)
-    (handler: MessageChannelHandler[CP], context: protocol.ChannelContext, materializeChild: MaterializeChild)
+    (handler: MessageChannelHandler[CP], context: CP#ChannelContext, materializeChild: MaterializeChild)
     (implicit materializeChildPickler: Pickler[MaterializeChild]): MessageChannel[CP] = {
     val channelId = channelIdx.getAndIncrement()
     val channelGlobalId = router.nextGlobalId
     val channel = new MessageChannel(protocol)(channelId, channelGlobalId, this, handler, context)
     subChannels = subChannels.updated(channelId, channel)
     // inform our counterpart
-    router.establishChannel(channel, context, materializeChild)(protocol.contextPickler, materializeChildPickler)
+    router.establishChannel(channel, context, materializeChild)(
+      protocol.contextPickler.asInstanceOf[Pickler[CP#ChannelContext]], materializeChildPickler
+    )
     handler.establishing(channel)
     channel
   }
