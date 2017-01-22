@@ -2,12 +2,12 @@ import sbt._
 import Keys._
 import com.typesafe.sbt.pgp.PgpKeys._
 
-crossScalaVersions := Seq("2.11.8")
+crossScalaVersions := Seq("2.11.8", "2.12.1")
 
 val commonSettings = Seq(
-  organization := "me.chrons",
+  organization := "io.suzaku",
   version := Version.library,
-  scalaVersion := "2.11.8",
+  scalaVersion := "2.12.1",
   scalacOptions := Seq(
     "-deprecation",
     "-encoding", "UTF-8",
@@ -15,7 +15,6 @@ val commonSettings = Seq(
     "-unchecked",
     "-Xfatal-warnings",
     "-Xlint",
-    "-Yinline-warnings",
     "-Yno-adapted-args",
     "-Ywarn-dead-code",
     "-Ywarn-numeric-widen",
@@ -24,19 +23,19 @@ val commonSettings = Seq(
   scalacOptions in Compile -= "-Ywarn-value-discard",
   scalacOptions in(Compile, doc) -= "-Xfatal-warnings",
   libraryDependencies ++= Seq(
-    "org.scalatest" %%% "scalatest" % "3.0.0-RC3" % "test"
+    "org.scalatest" %%% "scalatest" % "3.0.0" % "test"
   )
 )
 
 val publishSettings = Seq(
   scmInfo := Some(ScmInfo(
-    url("https://github.com/ochrons/arteria"),
-    "scm:git:git@github.com:ochrons/arteria.git",
-    Some("scm:git:git@github.com:ochrons/arteria.git"))),
+    url("https://github.com/suzaku-io/arteria"),
+    "scm:git:git@github.com:suzaku-io/arteria.git",
+    Some("scm:git:git@github.com:suzaku-io/arteria.git"))),
   publishMavenStyle := true,
   publishArtifact in Test := false,
   pomExtra :=
-    <url>https://github.com/ochrons/arteria</url>
+    <url>https://github.com/suzaku-io/arteria</url>
       <licenses>
         <license>
           <name>MIT license</name>
@@ -65,7 +64,7 @@ val sourceMapSetting =
     if (isSnapshot.value) Seq.empty
     else Seq({
       val a = baseDirectory.value.toURI.toString.replaceFirst("[^/]+/?$", "")
-      val g = "https://raw.githubusercontent.com/ochrons/arteria"
+      val g = "https://raw.githubusercontent.com/suzaku-io/arteria"
       s"-P:scalajs:mapSourceURI:$a->$g/v${version.value}/${name.value}/"
     })
   )
@@ -86,7 +85,7 @@ lazy val arteriaCore = crossProject.in(file("arteria-core"))
   .settings(
     name := "arteria-core",
     libraryDependencies ++= Seq(
-      "me.chrons" %%% "boopickle" % "1.2.4"
+      "me.chrons" %%% "boopickle" % "1.2.5"
     )
   )
   .jsSettings(
