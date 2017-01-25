@@ -17,6 +17,7 @@ trait Message
   * @tparam P Protocol that the channel is using
   */
 trait MessageChannelHandler[P <: Protocol] {
+
   /**
     * An alias for protocol type
     */
@@ -76,7 +77,7 @@ trait MessageChannelHandler[P <: Protocol] {
   */
 trait MessageChannelBase {
   protected[core] var subChannels = IntMap.empty[MessageChannelBase]
-  protected[core] val channelIdx = new AtomicInteger(1)
+  protected[core] val channelIdx  = new AtomicInteger(1)
 
   def id: Int
 
@@ -165,11 +166,11 @@ trait MessageChannelBase {
   * @tparam P Protocol type
   */
 class MessageChannel[P <: Protocol](val protocol: P)(
-  val id: Int,
-  val globalId: Int,
-  val parent: MessageChannelBase,
-  val handler: MessageChannelHandler[P],
-  val context: P#ChannelContext
+    val id: Int,
+    val globalId: Int,
+    val parent: MessageChannelBase,
+    val handler: MessageChannelHandler[P],
+    val context: P#ChannelContext
 ) extends MessageChannelBase {
 
   /**
@@ -233,16 +234,18 @@ class MessageChannel[P <: Protocol](val protocol: P)(
     * @tparam CP Protocol type
     * @return Newly created channel
     */
-  def createChannel[MaterializeChild, CP <: Protocol](protocol: CP)
-    (handler: MessageChannelHandler[CP], context: CP#ChannelContext, materializeChild: MaterializeChild)
-    (implicit materializeChildPickler: Pickler[MaterializeChild]): MessageChannel[CP] = {
-    val channelId = channelIdx.getAndIncrement()
+  def createChannel[MaterializeChild, CP <: Protocol](protocol: CP)(
+      handler: MessageChannelHandler[CP],
+      context: CP#ChannelContext,
+      materializeChild: MaterializeChild)(implicit materializeChildPickler: Pickler[MaterializeChild]): MessageChannel[CP] = {
+    val channelId       = channelIdx.getAndIncrement()
     val channelGlobalId = router.nextGlobalId
-    val channel = new MessageChannel(protocol)(channelId, channelGlobalId, this, handler, context)
+    val channel         = new MessageChannel(protocol)(channelId, channelGlobalId, this, handler, context)
     subChannels = subChannels.updated(channelId, channel)
     // inform our counterpart
     router.establishChannel(channel, context, materializeChild)(
-      protocol.contextPickler.asInstanceOf[Pickler[CP#ChannelContext]], materializeChildPickler
+      protocol.contextPickler.asInstanceOf[Pickler[CP#ChannelContext]],
+      materializeChildPickler
     )
     handler.establishing(channel)
     channel
@@ -259,4 +262,3 @@ trait ChannelReader {
 private[core] class ChannelReaderImpl(unpickleState: UnpickleState) extends ChannelReader {
   def read[A](implicit pickler: Pickler[A]): A = unpickleState.unpickle(pickler)
 }
-

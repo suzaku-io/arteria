@@ -10,7 +10,8 @@ val commonSettings = Seq(
   scalaVersion := "2.12.1",
   scalacOptions := Seq(
     "-deprecation",
-    "-encoding", "UTF-8",
+    "-encoding",
+    "UTF-8",
     "-feature",
     "-unchecked",
     "-Xfatal-warnings",
@@ -19,19 +20,20 @@ val commonSettings = Seq(
     "-Ywarn-dead-code",
     "-Ywarn-numeric-widen",
     "-Ywarn-value-discard",
-    "-Xfuture"),
+    "-Xfuture"
+  ),
   scalacOptions in Compile -= "-Ywarn-value-discard",
-  scalacOptions in(Compile, doc) -= "-Xfatal-warnings",
+  scalacOptions in (Compile, doc) -= "-Xfatal-warnings",
   libraryDependencies ++= Seq(
     "org.scalatest" %%% "scalatest" % "3.0.0" % "test"
   )
 )
 
 val publishSettings = Seq(
-  scmInfo := Some(ScmInfo(
-    url("https://github.com/suzaku-io/arteria"),
-    "scm:git:git@github.com:suzaku-io/arteria.git",
-    Some("scm:git:git@github.com:suzaku-io/arteria.git"))),
+  scmInfo := Some(
+    ScmInfo(url("https://github.com/suzaku-io/arteria"),
+            "scm:git:git@github.com:suzaku-io/arteria.git",
+            Some("scm:git:git@github.com:suzaku-io/arteria.git"))),
   publishMavenStyle := true,
   publishArtifact in Test := false,
   pomExtra :=
@@ -49,7 +51,9 @@ val publishSettings = Seq(
           <url>https://github.com/ochrons</url>
         </developer>
       </developers>,
-  pomIncludeRepository := { _ => false },
+  pomIncludeRepository := { _ =>
+    false
+  },
   publishTo := {
     val nexus = "https://oss.sonatype.org/"
     if (isSnapshot.value)
@@ -62,11 +66,12 @@ val publishSettings = Seq(
 val sourceMapSetting =
   Def.setting(
     if (isSnapshot.value) Seq.empty
-    else Seq({
-      val a = baseDirectory.value.toURI.toString.replaceFirst("[^/]+/?$", "")
-      val g = "https://raw.githubusercontent.com/suzaku-io/arteria"
-      s"-P:scalajs:mapSourceURI:$a->$g/v${version.value}/${name.value}/"
-    })
+    else
+      Seq({
+        val a = baseDirectory.value.toURI.toString.replaceFirst("[^/]+/?$", "")
+        val g = "https://raw.githubusercontent.com/suzaku-io/arteria"
+        s"-P:scalajs:mapSourceURI:$a->$g/v${version.value}/${name.value}/"
+      })
   )
 
 def preventPublication(p: Project) =
@@ -77,15 +82,17 @@ def preventPublication(p: Project) =
     publishLocalSigned := (),
     publishArtifact := false,
     publishTo := Some(Resolver.file("Unused transient repository", target.value / "fakepublish")),
-    packagedArtifacts := Map.empty)
+    packagedArtifacts := Map.empty
+  )
 
-lazy val arteriaCore = crossProject.in(file("arteria-core"))
+lazy val arteriaCore = crossProject
+  .in(file("arteria-core"))
   .settings(commonSettings: _*)
   .settings(publishSettings: _*)
   .settings(
     name := "arteria-core",
     libraryDependencies ++= Seq(
-      "me.chrons" %%% "boopickle" % "1.2.5"
+      "io.suzaku" %%% "boopickle" % "1.2.6"
     )
   )
   .jsSettings(

@@ -2,5 +2,4 @@ package arteria
 
 import org.scalatest._
 
-abstract class UnitSpec extends FlatSpec with Matchers {
-}
+abstract class UnitSpec extends FlatSpec with Matchers {}

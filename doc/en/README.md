@@ -14,11 +14,11 @@ In addition to high performance messaging, Arteria has following design goals:
 
 To use Arteria in your application add following dependency declaration to your Scala project.
 
-<pre><code class="lang-scala">"me.chrons" %% "arteria-core" % "{{ book.version }}"</code></pre>
+<pre><code class="lang-scala">"io.suzaku" %% "arteria-core" % "{{ book.version }}"</code></pre>
 
 In a Scala.js project the dependency looks like this.
 
-<pre><code class="lang-scala">"me.chrons" %%% "arteria-core" % "{{ book.version }}"</code></pre>
+<pre><code class="lang-scala">"io.suzaku" %%% "arteria-core" % "{{ book.version }}"</code></pre>
 
 ## Architecture
 
@@ -32,7 +32,7 @@ Arteria core doesn't provide the actual _transport_ between the routers, just a 
 implementation according to their needs. This also implicates that the flow of messages is inherently tied to the transport triggering a _flush_ on the router
 to get the backlog of messages to send.
 
-The serialization of messages travelling on the channels is performed by [BooPickle](https://github.com/ochrons/boopickle), which provides highly optimized
+The serialization of messages travelling on the channels is performed by [BooPickle](https://github.com/suzaku-io/boopickle), which provides highly optimized
 pickling utilizing an efficient binary stream format. The stream is converted into/from a `ByteBuffer` for transportation.
 
 Each `MessageChannel` is associated with a _protocol_ providing type safety and symmetrical serialization for the messages on that channel. The protocol also

@@ -48,8 +48,11 @@ trait Protocol {
     * @param context  Initial context for the channel
     * @return Materialized channel
     */
-  def materializeChannel(id: Int, globalId: Int, parent: MessageChannelBase, handler: MessageChannelHandler[This],
-    context: ChannelContext): MessageChannel[This]
+  def materializeChannel(id: Int,
+                         globalId: Int,
+                         parent: MessageChannelBase,
+                         handler: MessageChannelHandler[This],
+                         context: ChannelContext): MessageChannel[This]
 
   def emptyHandler: MessageChannelHandler[This] = new MessageChannelHandler[This] {}
 
@@ -72,37 +75,51 @@ trait Protocol {
   /**
     * Helper function to define a protocol composed of multiple message types
     */
-  protected def defineProtocol[M1 <: Message, M2 <: Message]
-  (cp1: CompositePickler[M1], cp2: CompositePickler[M2]) = (
+  protected def defineProtocol[M1 <: Message, M2 <: Message](cp1: CompositePickler[M1], cp2: CompositePickler[M2]) = (
     new CompositePickler[Message].join(cp1).join(cp2),
-    witnessFor[M1], witnessFor[M2]
+    witnessFor[M1],
+    witnessFor[M2]
   )
 
   /**
     * Helper function to define a protocol composed of multiple message types
     */
-  protected def defineProtocol[M1 <: Message, M2 <: Message, M3 <: Message]
-  (cp1: CompositePickler[M1], cp2: CompositePickler[M2], cp3: CompositePickler[M3]) = (
+  protected def defineProtocol[M1 <: Message, M2 <: Message, M3 <: Message](cp1: CompositePickler[M1],
+                                                                            cp2: CompositePickler[M2],
+                                                                            cp3: CompositePickler[M3]) = (
     new CompositePickler[Message].join(cp1).join(cp2).join(cp3),
-    witnessFor[M1], witnessFor[M2], witnessFor[M3]
+    witnessFor[M1],
+    witnessFor[M2],
+    witnessFor[M3]
   )
 
   /**
     * Helper function to define a protocol composed of multiple message types
     */
-  protected def defineProtocol[M1 <: Message, M2 <: Message, M3 <: Message, M4 <: Message]
-  (cp1: CompositePickler[M1], cp2: CompositePickler[M2], cp3: CompositePickler[M3], cp4: CompositePickler[M4]) = (
+  protected def defineProtocol[M1 <: Message, M2 <: Message, M3 <: Message, M4 <: Message](cp1: CompositePickler[M1],
+                                                                                           cp2: CompositePickler[M2],
+                                                                                           cp3: CompositePickler[M3],
+                                                                                           cp4: CompositePickler[M4]) = (
     new CompositePickler[Message].join(cp1).join(cp2).join(cp3).join(cp4),
-    witnessFor[M1], witnessFor[M2], witnessFor[M3], witnessFor[M4]
+    witnessFor[M1],
+    witnessFor[M2],
+    witnessFor[M3],
+    witnessFor[M4]
   )
 
   /**
     * Helper function to define a protocol composed of multiple message types
     */
-  protected def defineProtocol[M1 <: Message, M2 <: Message, M3 <: Message, M4 <: Message, M5 <: Message]
-  (cp1: CompositePickler[M1], cp2: CompositePickler[M2], cp3: CompositePickler[M3], cp4: CompositePickler[M4],
-    cp5: CompositePickler[M5]) = (
+  protected def defineProtocol[M1 <: Message, M2 <: Message, M3 <: Message, M4 <: Message, M5 <: Message](cp1: CompositePickler[M1],
+                                                                                                          cp2: CompositePickler[M2],
+                                                                                                          cp3: CompositePickler[M3],
+                                                                                                          cp4: CompositePickler[M4],
+                                                                                                          cp5: CompositePickler[M5]) = (
     new CompositePickler[Message].join(cp1).join(cp2).join(cp3).join(cp4).join(cp5),
-    witnessFor[M1], witnessFor[M2], witnessFor[M3], witnessFor[M4], witnessFor[M5]
+    witnessFor[M1],
+    witnessFor[M2],
+    witnessFor[M3],
+    witnessFor[M4],
+    witnessFor[M5]
   )
 }

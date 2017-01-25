@@ -36,8 +36,11 @@ object SystemProtocol extends Protocol {
 
   override val contextPickler = implicitly[Pickler[SystemChannelContext]]
 
-  override def materializeChannel(id: Int, globalId: Int, parent: MessageChannelBase, handler: MessageChannelHandler[This],
-    context: SystemChannelContext): MessageChannel[This] = {
+  override def materializeChannel(id: Int,
+                                  globalId: Int,
+                                  parent: MessageChannelBase,
+                                  handler: MessageChannelHandler[This],
+                                  context: SystemChannelContext): MessageChannel[This] = {
     val channel = new MessageChannel(this)(id, globalId, parent, handler, context)
     channel
   }
@@ -62,8 +65,11 @@ object RandomProtocol extends Protocol {
 
   override def contextPickler = implicitly[Pickler[RandomProtocolContext]]
 
-  override def materializeChannel(id: Int, globalId: Int, parent: MessageChannelBase, handler: MessageChannelHandler[RandomProtocol.This],
-    context: RandomProtocolContext): MessageChannel[RandomProtocol.This] = {
+  override def materializeChannel(id: Int,
+                                  globalId: Int,
+                                  parent: MessageChannelBase,
+                                  handler: MessageChannelHandler[RandomProtocol.This],
+                                  context: RandomProtocolContext): MessageChannel[RandomProtocol.This] = {
     val channel = new MessageChannel(this)(id, globalId, parent, handler, context)
     channel
   }
@@ -71,9 +77,9 @@ object RandomProtocol extends Protocol {
 
 class RandomHandler extends MessageChannelHandler[RandomProtocol.type] {
   import RandomProtocol._
-  var receivedMessages = Vector.empty[Message]
+  var receivedMessages                         = Vector.empty[Message]
   var channel: MessageChannel[ChannelProtocol] = _
-  var receivedValue: Int = -1
+  var receivedValue: Int                       = -1
 
   override def established(channel: MessageChannel[ChannelProtocol]): Unit = {
     this.channel = channel
@@ -92,7 +98,7 @@ class RandomHandler extends MessageChannelHandler[RandomProtocol.type] {
 }
 
 class TestSystemHandler extends MessageChannelHandler[SystemProtocol.type] {
-  var receivedMessages = Vector.empty[Message]
+  var receivedMessages                         = Vector.empty[Message]
   var channel: MessageChannel[ChannelProtocol] = _
 
   override def established(channel: MessageChannel[ChannelProtocol]): Unit = {
@@ -104,7 +110,10 @@ class TestSystemHandler extends MessageChannelHandler[SystemProtocol.type] {
     receivedMessages :+= message
   }
 
-  override def materializeChildChannel(id: Int, globalId: Int, parent: MessageChannelBase, channelReader: ChannelReader): MessageChannelBase = {
+  override def materializeChildChannel(id: Int,
+                                       globalId: Int,
+                                       parent: MessageChannelBase,
+                                       channelReader: ChannelReader): MessageChannelBase = {
     val materializeChild = channelReader.read[String]
     assert(materializeChild == "random")
     val context = channelReader.read[RandomProtocol.ChannelContext]
@@ -117,7 +126,7 @@ class TestRouterHandler(val systemHandler: MessageChannelHandler[SystemProtocol.
   import SystemProtocol._
 
   var materializeRequests = Vector.empty[Int]
-  var closeRequests = Vector.empty[Int]
+  var closeRequests       = Vector.empty[Int]
 
   override def pickleStateFactory: PickleState =
     new PickleState(new EncoderSpeed(), false, false)
@@ -125,8 +134,11 @@ class TestRouterHandler(val systemHandler: MessageChannelHandler[SystemProtocol.
   override def unpickleStateFactory(bb: ByteBuffer): UnpickleState =
     new UnpickleState(new DecoderSpeed(bb), false, false)
 
-  override def materializeChildChannel(id: Int, globalId: Int, router: MessageRouterBase, materializeChild: MainChannelMetadata,
-    contextReader: ChannelReader): Option[MessageChannelBase] = {
+  override def materializeChildChannel(id: Int,
+                                       globalId: Int,
+                                       router: MessageRouterBase,
+                                       materializeChild: MainChannelMetadata,
+                                       contextReader: ChannelReader): Option[MessageChannelBase] = {
     materializeRequests :+= globalId
     materializeChild match {
       case CreateSystemChannel =>
@@ -156,11 +168,11 @@ class MessageChannelSpec extends UnitSpec {
 
   def initRouters = {
     // init routers and set up channel
-    val routerA = defaultRouterA
+    val routerA        = defaultRouterA
     val systemHandlerA = new TestSystemHandler
     val systemHandlerB = new TestSystemHandler
-    val routerB = router(new TestRouterHandler(systemHandlerB), false)
-    val channel = routerA.createChannel(SystemProtocol)(systemHandlerA, SystemChannelContext("system"), CreateSystemChannel)
+    val routerB        = router(new TestRouterHandler(systemHandlerB), false)
+    val channel        = routerA.createChannel(SystemProtocol)(systemHandlerA, SystemChannelContext("system"), CreateSystemChannel)
     runRouters(routerA, routerB)
 
     (routerA, routerB, systemHandlerA, systemHandlerB, channel)
@@ -187,7 +199,7 @@ class MessageChannelSpec extends UnitSpec {
     val data = bb.slice().order(ByteOrder.LITTLE_ENDIAN) // remember to set little endian on the copy
 
     // check that everything is correctly serialized
-    val uState = new UnpickleState(new DecoderSpeed(bb), false, false)
+    val uState   = new UnpickleState(new DecoderSpeed(bb), false, false)
     val startTag = uState.dec.readInt
     startTag shouldBe MessageRouter.StartTag
     uState.dec.readInt shouldBe (RouterChannelId | MessageTag)
@@ -214,10 +226,10 @@ class MessageChannelSpec extends UnitSpec {
     // send the message
     channel.send(System1(5))
     routerA.hasPending shouldBe true
-    val bb = routerA.flush()
+    val bb   = routerA.flush()
     val data = bb.slice().order(ByteOrder.LITTLE_ENDIAN) // remember to set little endian on the copy
 
-    val uState = new UnpickleState(new DecoderSpeed(bb), false, false)
+    val uState   = new UnpickleState(new DecoderSpeed(bb), false, false)
     val startTag = uState.dec.readInt
     startTag shouldBe MessageRouter.StartTag
     val channelId = uState.dec.readInt
