@@ -1,0 +1,366 @@
+
+<!DOCTYPE HTML>
+<html lang="en" >
+    <head>
+        <meta charset="UTF-8">
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <title>Channels and Protocols · GitBook</title>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="description" content="">
+        <meta name="generator" content="GitBook 3.2.2">
+        
+        
+        
+    
+    <link rel="stylesheet" href="../gitbook/style.css">
+
+    
+            
+                
+                <link rel="stylesheet" href="../gitbook/gitbook-plugin-highlight/website.css">
+                
+            
+                
+                <link rel="stylesheet" href="../gitbook/gitbook-plugin-search/search.css">
+                
+            
+                
+                <link rel="stylesheet" href="../gitbook/gitbook-plugin-fontsettings/website.css">
+                
+            
+        
+
+    
+
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+
+        
+    
+    
+    <meta name="HandheldFriendly" content="true"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link rel="apple-touch-icon-precomposed" sizes="152x152" href="../gitbook/images/apple-touch-icon-precomposed-152.png">
+    <link rel="shortcut icon" href="../gitbook/images/favicon.ico" type="image/x-icon">
+
+    
+    
+    <link rel="prev" href="MessageRouter.html" />
+    
+
+    </head>
+    <body>
+        
+<div class="book">
+    <div class="book-summary">
+        
+            
+<div id="book-search-input" role="search">
+    <input type="text" placeholder="Type to search" />
+</div>
+
+            
+                <nav role="navigation">
+                
+
+
+<ul class="summary">
+    
+    
+
+    
+
+    
+        
+        
+    
+        <li class="chapter " data-level="1.1" data-path="./">
+            
+                <a href="./">
+            
+                    
+                    Introduction
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter " data-level="1.2" data-path="MessageRouter.html">
+            
+                <a href="MessageRouter.html">
+            
+                    
+                    Message routers
+            
+                </a>
+            
+
+            
+        </li>
+    
+        <li class="chapter active" data-level="1.3" data-path="ChannelProtocol.html">
+            
+                <a href="ChannelProtocol.html">
+            
+                    
+                    Channels and Protocols
+            
+                </a>
+            
+
+            
+        </li>
+    
+
+    
+
+    <li class="divider"></li>
+
+    <li>
+        <a href="https://www.gitbook.com" target="blank" class="gitbook-link">
+            Published with GitBook
+        </a>
+    </li>
+</ul>
+
+
+                </nav>
+            
+        
+    </div>
+
+    <div class="book-body">
+        
+            <div class="body-inner">
+                
+                    
+
+<div class="book-header" role="navigation">
+    
+
+    <!-- Title -->
+    <h1>
+        <i class="fa fa-circle-o-notch fa-spin"></i>
+        <a href="." >Channels and Protocols</a>
+    </h1>
+</div>
+
+
+
+
+                    <div class="page-wrapper" tabindex="-1" role="main">
+                        <div class="page-inner">
+                            
+<div id="book-search-results">
+    <div class="search-noresults">
+    
+                                <section class="normal markdown-section">
+                                
+                                <h1 id="channels-and-protocols">Channels and protocols</h1>
+<p>A <code>MessageChannel</code> is a bidirectional communication channel between the routers, passing <em>messages</em> defined by the <code>Protocol</code>. To create a
+channel you need to define a <em>protocol</em> and a <em>handler</em> for your messages.</p>
+<h2 id="protocol">Protocol</h2>
+<p>Message protocol defines what messages can be sent on a channel and how they are serialized. It also defines a context type and its
+serialization, which is used when materializing a channel. To define a protocol for our logging channel, we could write something like this:</p>
+<pre><code class="lang-scala"><span class="hljs-keyword">import</span> arteria.core._
+<span class="hljs-keyword">import</span> boopickle.<span class="hljs-type">Default</span>._
+
+<span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">LoggerProtocol</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">Protocol</span> </span>{
+
+  <span class="hljs-keyword">sealed</span> <span class="hljs-class"><span class="hljs-keyword">trait</span> <span class="hljs-title">LoggerMessage</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">Message</span></span>
+
+  <span class="hljs-keyword">case</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">LogDebug</span>(<span class="hljs-params">message: <span class="hljs-type">String</span></span>) <span class="hljs-keyword">extends</span> <span class="hljs-title">LoggerMessage</span></span>
+
+  <span class="hljs-keyword">case</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">LogInfo</span>(<span class="hljs-params">message: <span class="hljs-type">String</span></span>) <span class="hljs-keyword">extends</span> <span class="hljs-title">LoggerMessage</span></span>
+
+  <span class="hljs-keyword">case</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">LogWarn</span>(<span class="hljs-params">message: <span class="hljs-type">String</span></span>) <span class="hljs-keyword">extends</span> <span class="hljs-title">LoggerMessage</span></span>
+
+  <span class="hljs-keyword">case</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">LogError</span>(<span class="hljs-params">message: <span class="hljs-type">String</span></span>) <span class="hljs-keyword">extends</span> <span class="hljs-title">LoggerMessage</span></span>
+
+  <span class="hljs-keyword">private</span> <span class="hljs-keyword">val</span> logPickler = compositePickler[<span class="hljs-type">LoggerMessage</span>]
+    .addConcreteType[<span class="hljs-type">LogDebug</span>]
+    .addConcreteType[<span class="hljs-type">LogInfo</span>]
+    .addConcreteType[<span class="hljs-type">LogWarn</span>]
+    .addConcreteType[<span class="hljs-type">LogError</span>]
+
+  <span class="hljs-keyword">implicit</span> <span class="hljs-keyword">val</span> (messagePickler, logMsgWitness) = defineProtocol(logPickler)
+
+  <span class="hljs-keyword">case</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">LoggerProtocolContext</span>(<span class="hljs-params">name: <span class="hljs-type">String</span></span>)</span>
+
+  <span class="hljs-keyword">override</span> <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">ChannelContext</span> </span>= <span class="hljs-type">LoggerProtocolContext</span>
+
+  <span class="hljs-keyword">override</span> <span class="hljs-keyword">val</span> contextPickler = implicitly[<span class="hljs-type">Pickler</span>[<span class="hljs-type">LoggerProtocolContext</span>]]
+}
+</code></pre>
+<p>First we define a base trait <code>LoggerMessage</code> for all logger messages and then the actual messages. These message case classes form a sealed
+class hierarchy which can be reliably serialized (pickled). Next step is to define a <em>composite pickler</em> <code>logPickler</code> that knows how to
+pickle and unpickle the logger messages. The composite pickler is defined by its base type and by adding individual concrete types with
+<code>addConcreteType</code>. Then we are ready to define the actual <code>messagePickler</code> using the <code>defineProtocol</code> helper function, passing the 
+previously created composite pickler. In addition to the pickler, <code>defineProtocol</code> also returns a <em>message witness</em> which is used to ensure
+that messages sent on this channel are type safe.</p>
+<p><code>MessageWitness[M, P]</code> is a type class that signals that a messages of type <code>M</code> are valid for protocol <code>P</code>. Calling <code>send</code> on a channel
+requires that an appropriate <code>MessageWitness</code> is implicitly available. By storing the message witnesses inside the protocol class, they
+automatically are.</p>
+<p>When a channel is created, its initial <em>context</em> is sent to the other side to be used in channel materialization. For this purpose we need
+to override the <code>ChannelContext</code> type with our own context and provide a pickler for the context. Here we can simply use an implicitly
+created pickler.</p>
+<h2 id="message-handler">Message handler</h2>
+<p>While Arteria makes sure that your messages are passed through, it cannot handle those messages for you, so you need to provide a
+<code>MessageChannelHandler</code>. The handler trait has several lifecycle callbacks such as <code>establishing</code>, <code>established</code> and <code>closed</code>, but mainly
+we are interested in the <code>process</code> method which is called for every message received.</p>
+<p>A simple implementation for handling the logger protocol could be something like this,</p>
+<pre><code class="lang-scala"><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">LoggerHandler</span>(<span class="hljs-params">logger: <span class="hljs-type">Logger</span></span>) <span class="hljs-keyword">extends</span> <span class="hljs-title">MessageChannelHandler</span>[<span class="hljs-type">LoggerProtocol</span>.type] </span>{
+  <span class="hljs-keyword">override</span> <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">process</span> </span>= {
+    <span class="hljs-keyword">case</span> <span class="hljs-type">LogDebug</span>(msg) =&gt; logger.debug(msg)
+    <span class="hljs-keyword">case</span> <span class="hljs-type">LogInfo</span>(msg)  =&gt; logger.info(msg)
+    <span class="hljs-keyword">case</span> <span class="hljs-type">LogWarn</span>(msg)  =&gt; logger.warn(msg)
+    <span class="hljs-keyword">case</span> <span class="hljs-type">LogError</span>(msg) =&gt; logger.error(msg)
+  }
+}
+</code></pre>
+<p>The <code>process</code> method actually returns a <code>PartialFunction[Message, Unit]</code> which handles the real message processing. This makes defining the
+implementation simple, as you can just write the matching <code>case</code> statements for each message type.</p>
+<h2 id="materializing-channels">Materializing channels</h2>
+<p>When a new channel is created on top of a router (or another channel), a special message is sent to the other router, instructing it to
+<em>materialize</em> an instance of that channel. For our logger, we need to do this in our router handler.</p>
+<pre><code class="lang-scala"><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">TopChannelHandler</span>(<span class="hljs-params">loggerHandler: <span class="hljs-type">MessageChannelHandler</span>[<span class="hljs-type">LoggerProtocol</span>.type]</span>) </span>
+  <span class="hljs-keyword">extends</span> <span class="hljs-type">MessageRouterHandler</span>[<span class="hljs-type">RouterChild</span>] {
+  <span class="hljs-keyword">override</span> <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">materializeChildChannel</span></span>(id: <span class="hljs-type">Int</span>,
+                                       globalId: <span class="hljs-type">Int</span>,
+                                       router: <span class="hljs-type">MessageRouterBase</span>,
+                                       materializeChild: <span class="hljs-type">RouterChild</span>,
+                                       contextReader: <span class="hljs-type">ChannelReader</span>): <span class="hljs-type">MessageChannelBase</span> = {
+    materializeChild <span class="hljs-keyword">match</span> {
+      <span class="hljs-keyword">case</span> <span class="hljs-type">CreateLoggerChannel</span> =&gt;
+        <span class="hljs-keyword">val</span> context = contextReader.read[<span class="hljs-type">LoggerProtocol</span>.<span class="hljs-type">ChannelContext</span>]
+        <span class="hljs-type">Some</span>(<span class="hljs-keyword">new</span> <span class="hljs-type">MessageChannel</span>(<span class="hljs-type">LoggerProtocol</span>)(id, globalId, router, loggerHandler, context))
+</code></pre>
+<p>First step is to read the channel context data from <code>ChannelReader</code> and pass that, with other relevant parameters including the logger
+handler, to the constructor of <code>MessageChannel</code>. Once the channel is created, it&apos;s ready to process incoming messages.</p>
+<h2 id="creating-a-channel">Creating a channel</h2>
+<p>Channels are always created as sub-channels of existing channels. The only exception being the <em>router</em>, which is also a channel, but stands
+on its own. To create our logger channel, we need to call <code>createChannel</code> on the router.</p>
+<pre><code class="lang-scala"><span class="hljs-keyword">val</span> loggerChannel = router.createChannel(<span class="hljs-type">LoggerProtocol</span>)(
+  <span class="hljs-type">MessageChannelHandler</span>.empty,
+  <span class="hljs-type">LoggerProtocol</span>.<span class="hljs-type">LoggerProtocolContext</span>(<span class="hljs-string">&quot;MainLog&quot;</span>),
+  <span class="hljs-type">CreateLogChannel</span>)
+</code></pre>
+<p>The first argument to <code>createChannel</code> is the protocol implementation, which also defines the types for the next arguments. While channels
+are bidirectional, in case of our logger we only send messages in one direction, so at this end we can replace the channel handler with an
+empty implementation. The initial context of the channel is passed as well as the instruction to materialize the correct channel type. </p>
+<h2 id="sending-messages">Sending messages</h2>
+<p>Establishing the channel is an asynchronous process as the other router must acknowledge the new channel, but we can start sending messages
+immediately after we have created the channel. Simply call the <code>send</code> method and pass an appropriate message:</p>
+<pre><code class="lang-scala">loggerChannel.send(<span class="hljs-type">LogDebug</span>(<span class="hljs-string">&quot;Just debugging&quot;</span>))
+</code></pre>
+<p>If you try to send a message that is not supported by the protocol, you will get a compilation error:</p>
+<pre><code class="lang-scala">loggerChannel.send(<span class="hljs-type">UIProtocol</span>.<span class="hljs-type">NextFrame</span>(<span class="hljs-number">0</span>))
+&gt;&gt;&gt; <span class="hljs-type">Message</span> of <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">UIProtocol</span>.<span class="hljs-title">NextFrame</span> <span class="hljs-title">is</span> <span class="hljs-title">not</span> <span class="hljs-title">valid</span> <span class="hljs-title">for</span> <span class="hljs-title">protocol</span> <span class="hljs-title">LoggerProtocol</span>.<span class="hljs-title">type</span></span>
+</code></pre>
+<p>To make the use of logger a bit easier, we can define a wrapper interface that provides nice and simple methods:</p>
+<pre><code class="lang-scala"><span class="hljs-keyword">val</span> logger: <span class="hljs-type">Logger</span> = <span class="hljs-keyword">new</span> <span class="hljs-type">Logger</span> {
+  <span class="hljs-keyword">override</span> <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">error</span></span>(message: <span class="hljs-type">String</span>): <span class="hljs-type">Unit</span> = loggerChannel.send(<span class="hljs-type">LogError</span>(message))
+  <span class="hljs-keyword">override</span> <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">debug</span></span>(message: <span class="hljs-type">String</span>): <span class="hljs-type">Unit</span> = loggerChannel.send(<span class="hljs-type">LogDebug</span>(message))
+  <span class="hljs-keyword">override</span> <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">info</span></span>(message: <span class="hljs-type">String</span>): <span class="hljs-type">Unit</span>  = loggerChannel.send(<span class="hljs-type">LogInfo</span>(message))
+  <span class="hljs-keyword">override</span> <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">warn</span></span>(message: <span class="hljs-type">String</span>): <span class="hljs-type">Unit</span>  = loggerChannel.send(<span class="hljs-type">LogWarn</span>(message))
+}
+</code></pre>
+
+                                
+                                </section>
+                            
+    </div>
+    <div class="search-results">
+        <div class="has-results">
+            
+            <h1 class="search-results-title"><span class='search-results-count'></span> results matching "<span class='search-query'></span>"</h1>
+            <ul class="search-results-list"></ul>
+            
+        </div>
+        <div class="no-results">
+            
+            <h1 class="search-results-title">No results matching "<span class='search-query'></span>"</h1>
+            
+        </div>
+    </div>
+</div>
+
+                        </div>
+                    </div>
+                
+            </div>
+
+            
+                
+                <a href="MessageRouter.html" class="navigation navigation-prev navigation-unique" aria-label="Previous page: Message routers">
+                    <i class="fa fa-angle-left"></i>
+                </a>
+                
+                
+            
+        
+    </div>
+
+    <script>
+        var gitbook = gitbook || [];
+        gitbook.push(function() {
+            gitbook.page.hasChanged({"page":{"title":"Channels and Protocols","level":"1.3","depth":1,"previous":{"title":"Message routers","level":"1.2","depth":1,"path":"MessageRouter.md","ref":"MessageRouter.md","articles":[]},"dir":"ltr"},"config":{"plugins":["editlink","highlight","github"],"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"pluginsConfig":{"editlink":{"label":"Edit This Page","multilingual":false,"base":"https://github.com/suzaku-io/arteria/tree/master/doc"},"github":{"url":"https://github.com/suzaku-io/arteria/"},"highlight":{},"search":{},"lunr":{"maxIndexSize":1000000,"ignoreSpecialCharacters":false},"sharing":{"facebook":true,"twitter":true,"google":false,"weibo":false,"instapaper":false,"vk":false,"all":["facebook","google","twitter","weibo","instapaper"]},"fontsettings":{"theme":"white","family":"sans","size":2},"theme-default":{"styles":{"website":"styles/website.css","pdf":"styles/pdf.css","epub":"styles/epub.css","mobi":"styles/mobi.css","ebook":"styles/ebook.css","print":"styles/print.css"},"showLevel":false}},"theme":"default","pdf":{"pageNumbers":true,"fontSize":12,"fontFamily":"Arial","paperSize":"a4","chapterMark":"pagebreak","pageBreaksBefore":"/","margin":{"right":62,"left":62,"top":56,"bottom":56}},"structure":{"langs":"LANGS.md","readme":"README.md","glossary":"GLOSSARY.md","summary":"SUMMARY.md"},"variables":{"version":"0.1.0-SNAPSHOT"},"language":"en","gitbook":"*"},"file":{"path":"ChannelProtocol.md","mtime":"2017-01-28T22:48:43.728Z","type":"markdown"},"gitbook":{"version":"3.2.2","time":"2017-01-28T22:49:37.463Z"},"basePath":".","book":{"language":"en"}});
+        });
+    </script>
+</div>
+
+        
+    <script src="../gitbook/gitbook.js"></script>
+    <script src="../gitbook/theme.js"></script>
+    
+        
+        <script src="../gitbook/gitbook-plugin-editlink/plugin.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-github/plugin.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-search/search-engine.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-search/search.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-lunr/lunr.min.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-lunr/search-lunr.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-sharing/buttons.js"></script>
+        
+    
+        
+        <script src="../gitbook/gitbook-plugin-fontsettings/fontsettings.js"></script>
+        
+    
+
+    </body>
+</html>
+
