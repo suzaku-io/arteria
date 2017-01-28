@@ -1,26 +1,24 @@
 package arteria.core
 
-import boopickle.{BasicPicklers, CompositePickler, Pickler}
+import boopickle.{CompositePickler, Pickler}
 
 import scala.annotation.implicitNotFound
 
 /**
-  * Provides evidence that a message of type `A` (or any of its descendants) is valid for protocol `P`
+  * Provides evidence that a message of type `M` (or any of its descendants) is valid for protocol `P`
   *
-  * @tparam A Message type
+  * @tparam M Message type
   * @tparam P Protocol type
   */
-@implicitNotFound("Message of type ${A} is not valid for protocol ${P}")
-trait MessageWitness[-A <: Message, P]
+@implicitNotFound("Message of type ${M} is not valid for protocol ${P}")
+trait MessageWitness[-M <: Message, P <: Protocol]
 
 /**
   * A `Protocol` is used to define the communication protocol on a `MessageChannel`
   */
 trait Protocol {
-  type This = this.type
-
   /**
-    * Type for the context that gets passed to the channel
+    * Type for the context that gets passed to the channel when it's materialized
     */
   type ChannelContext
 
@@ -29,40 +27,22 @@ trait Protocol {
     *
     * @return
     */
-  def messagePickler: Pickler[Message]
+  val messagePickler: Pickler[Message]
 
   /**
     * A pickler for the channel context type
     *
     * @return
     */
-  def contextPickler: Pickler[ChannelContext]
-
-  /**
-    * Materializes a message channel when requested by the router
-    *
-    * @param id       Channel ID
-    * @param globalId Global channel ID
-    * @param parent   Parent channel (or router)
-    * @param handler  Handler for this channel
-    * @param context  Initial context for the channel
-    * @return Materialized channel
-    */
-  def materializeChannel(id: Int,
-                         globalId: Int,
-                         parent: MessageChannelBase,
-                         handler: MessageChannelHandler[This],
-                         context: ChannelContext): MessageChannel[This]
-
-  def emptyHandler: MessageChannelHandler[This] = new MessageChannelHandler[This] {}
+  val contextPickler: Pickler[ChannelContext]
 
   /**
     * A helper function to provide evidence (witness) that a message type is supported by this protocol.
     *
-    * @tparam A Type of the message (or a root of a message hierarchy)
+    * @tparam M Type of the message (or a root of a message hierarchy)
     * @return
     */
-  protected def witnessFor[A <: Message]: MessageWitness[A, This] = new MessageWitness[A, This] {}
+  protected def witnessFor[M <: Message]: MessageWitness[M, this.type] = new MessageWitness[M, this.type] {}
 
   /**
     * Helper function to define a protocol composed of multiple message types

@@ -12,67 +12,6 @@ import scala.collection.immutable.IntMap
 trait Message
 
 /**
-  * Defines a handler for a message channel.
-  *
-  * @tparam P Protocol that the channel is using
-  */
-trait MessageChannelHandler[P <: Protocol] {
-
-  /**
-    * An alias for protocol type
-    */
-  type ChannelProtocol = P
-
-  /**
-    * Called when a channel is being established. After receiving this callback the channel is
-    * ready to send messages.
-    *
-    * @param channel Channel that is being established
-    */
-  def establishing(channel: MessageChannel[ChannelProtocol]): Unit = {}
-
-  /**
-    * Called when a channel has been established. After receiving this callback the channel is
-    * ready to accept messages in both directions.
-    *
-    * @param channel Channel that has been established
-    */
-  def established(channel: MessageChannel[ChannelProtocol]): Unit = {}
-
-  /**
-    * A request to materialize a child channel with the given parameters. This function is called when a remote router
-    * has created a channel and the local router is establishing the channel.
-    *
-    * @param id            Channel identifier
-    * @param globalId      Global channel identifier
-    * @param parent        Parent channel
-    * @param channelReader A reader for reading child channel creation and context data
-    * @return Newly materialized channel
-    */
-  def materializeChildChannel(id: Int, globalId: Int, parent: MessageChannelBase, channelReader: ChannelReader): MessageChannelBase = ???
-
-  /**
-    * A child channel will close immediately. Use to perform internal clean-up
-    *
-    * @param id Identifies the channel that will close
-    */
-  def channelWillClose(id: Int): Unit = {}
-
-  /**
-    * This channel has been closed. Can be used to free any allocated resources and to inform other
-    * parties about channel closing
-    */
-  def closed(): Unit = {}
-
-  /**
-    * Called for every message received
-    *
-    * @param message
-    */
-  def process(message: Message): Unit = {}
-}
-
-/**
   * Base functionality for a message channel
   */
 trait MessageChannelBase {
@@ -173,20 +112,12 @@ class MessageChannel[P <: Protocol](val protocol: P)(
     val context: P#ChannelContext
 ) extends MessageChannelBase {
 
-  /**
-    * Sends a message on this channel. Message type is checked using an implicit `MessageWitness`.
-    *
-    * @param message Message to send
-    * @param ev      Provides evidence that message is valid for the protocol `P`
-    * @tparam A Type of the message
-    */
-  def send[A <: Message](message: A)(implicit ev: MessageWitness[A, P]): Unit = {
-    router.send(message, globalId)(protocol.messagePickler)
-  }
+  private val handlerFunc = handler.process.lift
 
   override def receive(channelReader: ChannelReader): Unit = {
     val msg = channelReader.read(protocol.messagePickler)
-    handler.process(msg)
+    if (handlerFunc(msg).isEmpty)
+      throw new MatchError(msg)
   }
 
   override def receiveDrop(channelReader: ChannelReader): Unit = {
@@ -225,6 +156,17 @@ class MessageChannel[P <: Protocol](val protocol: P)(
   }
 
   /**
+    * Sends a message on this channel. Message type is checked using an implicit `MessageWitness`.
+    *
+    * @param message Message to send
+    * @param ev      Provides evidence that message is valid for the protocol `P`
+    * @tparam A Type of the message
+    */
+  final def send[A <: Message](message: A)(implicit ev: MessageWitness[A, P]): Unit = {
+    router.send(message, globalId)(protocol.messagePickler)
+  }
+
+  /**
     * Creates a new child channel with the given protocol and parameters
     *
     * @param protocol         Protocol for the new child channel
@@ -234,7 +176,7 @@ class MessageChannel[P <: Protocol](val protocol: P)(
     * @tparam CP Protocol type
     * @return Newly created channel
     */
-  def createChannel[MaterializeChild, CP <: Protocol](protocol: CP)(
+  final def createChannel[MaterializeChild, CP <: Protocol](protocol: CP)(
       handler: MessageChannelHandler[CP],
       context: CP#ChannelContext,
       materializeChild: MaterializeChild)(implicit materializeChildPickler: Pickler[MaterializeChild]): MessageChannel[CP] = {

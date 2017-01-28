@@ -96,8 +96,7 @@ lazy val arteriaCore = crossProject
     )
   )
   .jsSettings(
-    scalacOptions ++= sourceMapSetting.value,
-    scalaJSUseRhino in Global := false
+    scalacOptions ++= sourceMapSetting.value
   )
   .jvmSettings()
 
@@ -106,5 +105,5 @@ lazy val arteriaCoreJS = arteriaCore.js
 lazy val arteriaCoreJVM = arteriaCore.jvm
 
 lazy val root = preventPublication(project.in(file(".")))
-  .settings()
+  .settings(commonSettings: _*)
   .aggregate(arteriaCoreJS, arteriaCoreJVM)

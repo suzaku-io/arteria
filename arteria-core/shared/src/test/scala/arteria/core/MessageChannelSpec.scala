@@ -36,14 +36,6 @@ object SystemProtocol extends Protocol {
 
   override val contextPickler = implicitly[Pickler[SystemChannelContext]]
 
-  override def materializeChannel(id: Int,
-                                  globalId: Int,
-                                  parent: MessageChannelBase,
-                                  handler: MessageChannelHandler[This],
-                                  context: SystemChannelContext): MessageChannel[This] = {
-    val channel = new MessageChannel(this)(id, globalId, parent, handler, context)
-    channel
-  }
 }
 
 object RandomProtocol extends Protocol {
@@ -63,16 +55,8 @@ object RandomProtocol extends Protocol {
 
   implicit val (messagePickler, testMsg) = defineProtocol(tPickler)
 
-  override def contextPickler = implicitly[Pickler[RandomProtocolContext]]
+  override val contextPickler = implicitly[Pickler[RandomProtocolContext]]
 
-  override def materializeChannel(id: Int,
-                                  globalId: Int,
-                                  parent: MessageChannelBase,
-                                  handler: MessageChannelHandler[RandomProtocol.This],
-                                  context: RandomProtocolContext): MessageChannel[RandomProtocol.This] = {
-    val channel = new MessageChannel(this)(id, globalId, parent, handler, context)
-    channel
-  }
 }
 
 class RandomHandler extends MessageChannelHandler[RandomProtocol.type] {
@@ -85,15 +69,16 @@ class RandomHandler extends MessageChannelHandler[RandomProtocol.type] {
     this.channel = channel
   }
 
-  override def process(message: Message): Unit = {
-    println(s"System received: $message")
-    receivedMessages :+= message
-    message match {
-      case GenRandom(maxValue) =>
-        channel.send(RandomValue(math.min(9, maxValue)))
-      case RandomValue(value) =>
-        receivedValue = value
-    }
+  override def process = {
+    case message =>
+      println(s"System received: $message")
+      receivedMessages :+= message
+      message match {
+        case GenRandom(maxValue) =>
+          channel.send(RandomValue(math.min(9, maxValue)))
+        case RandomValue(value) =>
+          receivedValue = value
+      }
   }
 }
 
@@ -105,9 +90,10 @@ class TestSystemHandler extends MessageChannelHandler[SystemProtocol.type] {
     this.channel = channel
   }
 
-  override def process(message: Message): Unit = {
-    println(s"System received: $message")
-    receivedMessages :+= message
+  override def process = {
+    case message =>
+      println(s"System received: $message")
+      receivedMessages :+= message
   }
 
   override def materializeChildChannel(id: Int,
@@ -144,7 +130,7 @@ class TestRouterHandler(val systemHandler: MessageChannelHandler[SystemProtocol.
       case CreateSystemChannel =>
         println(s"createChannel called with id = $id")
         val context = contextReader.read[SystemChannelContext]
-        Some(SystemProtocol.materializeChannel(id, globalId, router, systemHandler, context))
+        Some(new MessageChannel(SystemProtocol)(id, globalId, router, systemHandler, context))
       case _ =>
         None
     }
@@ -173,6 +159,7 @@ class MessageChannelSpec extends UnitSpec {
     val systemHandlerB = new TestSystemHandler
     val routerB        = router(new TestRouterHandler(systemHandlerB), false)
     val channel        = routerA.createChannel(SystemProtocol)(systemHandlerA, SystemChannelContext("system"), CreateSystemChannel)
+    runRouters(routerA, routerB)
     runRouters(routerA, routerB)
 
     (routerA, routerB, systemHandlerA, systemHandlerB, channel)

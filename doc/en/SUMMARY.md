@@ -1,4 +1,5 @@
 # Table of Contents
 
 * [Introduction](README.md)
-* [Usage](Usage.md)
+* [Message routers](MessageRouter.md)
+* [Channels and Protocols](ChannelProtocol.md)

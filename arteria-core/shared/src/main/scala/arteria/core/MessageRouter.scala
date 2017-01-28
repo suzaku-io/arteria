@@ -4,7 +4,6 @@ import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicInteger
 
 import boopickle.Default._
-import boopickle.{DecoderSpeed, EncoderSpeed}
 
 import scala.collection.immutable.IntMap
 
@@ -58,58 +57,6 @@ object MessageRouter {
     .addConcreteType[ChannelEstablished]
     .addConcreteType[CloseChannel]
     .addConcreteType[ChannelClosed]
-}
-
-/**
-  * External interface for the router.
-  *
-  * @tparam MaterializeChild Type for materialization metadata, used when creating new channels under the router
-  */
-trait MessageRouterHandler[MaterializeChild] {
-
-  /**
-    * Builds a new instance of `PickleState` when needed for pickling messages.
-    */
-  def pickleStateFactory: PickleState = new PickleState(new EncoderSpeed(), false, false)
-
-  /**
-    * Builds a new instance of `UnpickleState` when needed for unpickling messages.
-    */
-  def unpickleStateFactory(bb: ByteBuffer): UnpickleState = new UnpickleState(new DecoderSpeed(bb), false, false)
-
-  /**
-    * Called when a new child channel needs to be created under the router.
-    *
-    * @param id                    Channel identifier
-    * @param globalId              Global identifier for the channel
-    * @param router                The router
-    * @param materializeChild      Metadata needed for creating a correct channel
-    * @param contextReader         Reader for reading additional data from the stream
-    * @return A newly created `MessageChannel`
-    */
-  def materializeChildChannel(id: Int,
-                              globalId: Int,
-                              router: MessageRouterBase,
-                              materializeChild: MaterializeChild,
-                              contextReader: ChannelReader): Option[MessageChannelBase]
-
-  /**
-    * Called when a child channel will be closed.
-    *
-    * @param globalId Global channel identifier
-    */
-  def channelWillClose(globalId: Int): Unit = {}
-
-  /**
-    * Called when the router itself is closing due to a request from the other router.
-    */
-  def routerWillClose(): Unit = {}
-
-  /**
-    * Called when a message has been queued by the router. This callback can be used to determine when
-    * there are pending messages that can be flushed.
-    */
-  def messagesPending(count: Int): Unit = {}
 }
 
 /**
@@ -170,7 +117,6 @@ class MessageRouter[MaterializeChild: Pickler](handler: MessageRouterHandler[Mat
     extends MessageRouterBase {
   import MessageRouter._
 
-  // TODO: implement a faster storage for channels
   protected[core] var globalChannels     = IntMap[Channel](0 -> Channel(this, StateOpening))
   protected[core] val globalChannelIdx   = new AtomicInteger(if (isPrimary) 0x1000 else 0x08001000)
   protected var pickleState: PickleState = _
@@ -331,9 +277,8 @@ class MessageRouter[MaterializeChild: Pickler](handler: MessageRouterHandler[Mat
             println(f"Channel $channelGlobalId%08x established")
             globalChannels = globalChannels.updated(channelGlobalId, Channel(channel, StateEstablished))
             channel.established()
-          case Some(Channel(channel, state)) =>
-            // ignore other states
-            throw new IllegalArgumentException(s"ChannelEstablished: Channel $channelGlobalId was in state $state")
+          case Some(Channel(_, _)) =>
+          // ignore other states
           case None =>
             throw new IllegalArgumentException(s"ChannelEstablished: Channel $channelGlobalId was not found")
         }
