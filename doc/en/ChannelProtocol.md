@@ -83,7 +83,8 @@ When a new channel is created on top of a router (or another channel), a special
 _materialize_ an instance of that channel. For our logger, we need to do this in our router handler.
 
 ```scala
-class TopChannelHandler(loggerHandler: MessageChannelHandler[LoggerProtocol.type]) extends MessageRouterHandler[RouterChild] {
+class TopChannelHandler(loggerHandler: MessageChannelHandler[LoggerProtocol.type]) 
+  extends MessageRouterHandler[RouterChild] {
   override def materializeChildChannel(id: Int,
                                        globalId: Int,
                                        router: MessageRouterBase,
@@ -104,9 +105,10 @@ Channels are always created as sub-channels of existing channels. The only excep
 on its own. To create our logger channel, we need to call `createChannel` on the router.
 
 ```scala
-val loggerChannel = router.createChannel(LoggerProtocol)(MessageChannelHandler.empty,
-                                                         LoggerProtocol.LoggerProtocolContext("MainLog"),
-                                                         CreateLogChannel)
+val loggerChannel = router.createChannel(LoggerProtocol)(
+  MessageChannelHandler.empty,
+  LoggerProtocol.LoggerProtocolContext("MainLog"),
+  CreateLogChannel)
 ```
 
 The first argument to `createChannel` is the protocol implementation, which also defines the types for the next arguments. While channels
@@ -139,3 +141,16 @@ val logger: Logger = new Logger {
   override def warn(message: String): Unit  = loggerChannel.send(LogWarn(message))
 }
 ```
+
+## Closing a channel
+
+Once you are done with the channel, you can close it simply by calling
+
+```scala
+loggerChannel.close()
+```
+
+This will close down the channel on this end and send a request to the other router to close down the channel on the other side as well.
+Your channel handler `closed()` callback is called and you can do clean-up etc. there. The parent channel handler's `channelClosed` method
+is also called.
+

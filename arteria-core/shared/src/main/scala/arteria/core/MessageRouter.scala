@@ -303,9 +303,10 @@ class MessageRouter[MaterializeChild: Pickler](handler: MessageRouterHandler[Mat
         println(f"Channel $channelGlobalId%08x is closed")
         globalChannels.get(channelGlobalId) match {
           case Some(Channel(channel, StateClosing)) =>
+            channel.parent.channelClosed(channel.id)
             globalChannels = globalChannels.updated(channelGlobalId, Channel(null, StateClosed))
-          case Some(Channel(channel, _)) =>
-            throw new IllegalStateException(s"Channel ${channel.globalId} is not in closing state")
+          case Some(Channel(channel, state)) =>
+            throw new IllegalStateException(s"Channel ${channel.globalId} is not in closing state [$state]")
           case None =>
             throw new IllegalArgumentException(s"ChannelClosed: Channel $channelGlobalId was not found")
         }

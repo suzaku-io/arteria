@@ -60,6 +60,7 @@ trait MessageChannelHandler[P <: Protocol] {
 }
 
 object MessageChannelHandler {
+
   /**
     * Creates an empty channel handler that cannot process any messages
     */

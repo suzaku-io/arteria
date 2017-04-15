@@ -17,6 +17,7 @@ trait MessageWitness[-M <: Message, P <: Protocol]
   * A `Protocol` is used to define the communication protocol on a `MessageChannel`
   */
 trait Protocol {
+
   /**
     * Type for the context that gets passed to the channel when it's materialized
     */

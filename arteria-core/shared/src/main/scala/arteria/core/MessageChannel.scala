@@ -126,8 +126,8 @@ class MessageChannel[P <: Protocol](val protocol: P)(
   }
 
   protected[core] override def materializeChildChannel(channelId: Int, globalId: Int, channelReader: ChannelReader): MessageChannelBase = {
-    val channel = handler.materializeChildChannel(id, globalId, this, channelReader)
-    subChannels = subChannels.updated(id, channel)
+    val channel = handler.materializeChildChannel(channelId, globalId, this, channelReader)
+    subChannels = subChannels.updated(channelId, channel)
     channel
   }
 
@@ -135,7 +135,6 @@ class MessageChannel[P <: Protocol](val protocol: P)(
     subChannels.get(channelId) match {
       case Some(channel) =>
         handler.channelWillClose(channelId)
-        channel.close()
         subChannels -= channelId
       case None =>
         throw new IllegalArgumentException(s"Channel $channelId is not a sub channel of $id")
