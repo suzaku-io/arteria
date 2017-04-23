@@ -108,7 +108,8 @@ class TestSystemHandler extends MessageChannelHandler[SystemProtocol.type] {
   }
 }
 
-class TestRouterHandler(val systemHandler: MessageChannelHandler[SystemProtocol.type]) extends MessageRouterHandler[MainChannelMetadata] {
+class TestRouterHandler(val systemHandler: MessageChannelHandler[SystemProtocol.type])
+    extends MessageRouterHandler[MainChannelMetadata] {
   import SystemProtocol._
 
   var materializeRequests = Vector.empty[Int]

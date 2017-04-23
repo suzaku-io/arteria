@@ -38,7 +38,10 @@ trait MessageChannelHandler[P <: Protocol] {
     * @param channelReader A reader for reading child channel creation and context data
     * @return Newly materialized channel
     */
-  def materializeChildChannel(id: Int, globalId: Int, parent: MessageChannelBase, channelReader: ChannelReader): MessageChannelBase = ???
+  def materializeChildChannel(id: Int,
+                              globalId: Int,
+                              parent: MessageChannelBase,
+                              channelReader: ChannelReader): MessageChannelBase = ???
 
   /**
     * A child channel will close immediately. Use to perform internal clean-up

@@ -83,7 +83,8 @@ class ProtocolCompositionSpec extends UnitSpec {
       .addConcreteType[C2]
       .addConcreteType[C3]
 
-    implicit val (messagePickler, witnessAMsg, witnessBMsg, witnessCMsg) = defineProtocol(ProtocolA.aPickler, ProtocolB.bPickler, cPickler)
+    implicit val (messagePickler, witnessAMsg, witnessBMsg, witnessCMsg) =
+      defineProtocol(ProtocolA.aPickler, ProtocolB.bPickler, cPickler)
 
     override val contextPickler = implicitly[Pickler[CContext]]
   }
@@ -103,6 +104,6 @@ class ProtocolCompositionSpec extends UnitSpec {
     val bh = new BHandler
     val ch = new CHandler(ah, bh)
 
-    val channel = new MessageChannel(ProtocolC)(0, 1, null, ch, ProtocolC.CContext(ProtocolA.AContext("a"), ProtocolB.BContext("b"), "c"))
+    new MessageChannel(ProtocolC)(0, 1, null, ch, ProtocolC.CContext(ProtocolA.AContext("a"), ProtocolB.BContext("b"), "c"))
   }
 }

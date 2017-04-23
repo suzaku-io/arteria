@@ -65,7 +65,9 @@ trait MessageChannelBase {
     * @param channelReader        Reader for accessing the data stream
     * @return
     */
-  protected[core] def materializeChildChannel(channelId: Int, channelGlobalId: Int, channelReader: ChannelReader): MessageChannelBase
+  protected[core] def materializeChildChannel(channelId: Int,
+                                              channelGlobalId: Int,
+                                              channelReader: ChannelReader): MessageChannelBase
 
   /**
     * Called when a child channel is closed.
@@ -125,7 +127,9 @@ class MessageChannel[P <: Protocol](val protocol: P)(
     ()
   }
 
-  protected[core] override def materializeChildChannel(channelId: Int, globalId: Int, channelReader: ChannelReader): MessageChannelBase = {
+  protected[core] override def materializeChildChannel(channelId: Int,
+                                                       globalId: Int,
+                                                       channelReader: ChannelReader): MessageChannelBase = {
     val channel = handler.materializeChildChannel(channelId, globalId, this, channelReader)
     subChannels = subChannels.updated(channelId, channel)
     channel
@@ -162,6 +166,7 @@ class MessageChannel[P <: Protocol](val protocol: P)(
     * @tparam A Type of the message
     */
   def send[A <: Message](message: A)(implicit ev: MessageWitness[A, P]): Unit = {
+    val _ = ev // workaround for a warning on unused implicit parameter
     router.send(message, globalId)(protocol.messagePickler)
   }
 
@@ -175,10 +180,9 @@ class MessageChannel[P <: Protocol](val protocol: P)(
     * @tparam CP Protocol type
     * @return Newly created channel
     */
-  def createChannel[MaterializeChild, CP <: Protocol](protocol: CP)(
-      handler: MessageChannelHandler[CP],
-      context: CP#ChannelContext,
-      materializeChild: MaterializeChild)(implicit materializeChildPickler: Pickler[MaterializeChild]): MessageChannel[CP] = {
+  def createChannel[MaterializeChild, CP <: Protocol](
+      protocol: CP)(handler: MessageChannelHandler[CP], context: CP#ChannelContext, materializeChild: MaterializeChild)(
+      implicit materializeChildPickler: Pickler[MaterializeChild]): MessageChannel[CP] = {
     val channelId       = channelIdx.getAndIncrement()
     val channelGlobalId = router.nextGlobalId
     val channel         = new MessageChannel(protocol)(channelId, channelGlobalId, this, handler, context)

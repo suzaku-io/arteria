@@ -93,8 +93,9 @@ trait MessageRouterBase extends MessageChannelBase {
     * @tparam MD Type of the materialization metadata
     * @return
     */
-  def establishChannel[C, MD](channel: MessageChannelBase, context: C, metadata: MD)(implicit cPickler: Pickler[C],
-                                                                                     mdPickler: Pickler[MD]): MessageChannelBase
+  def establishChannel[C, MD](channel: MessageChannelBase, context: C, metadata: MD)(
+      implicit cPickler: Pickler[C],
+      mdPickler: Pickler[MD]): MessageChannelBase
 
   /**
     * Closes a channel
@@ -348,10 +349,9 @@ class MessageRouter[MaterializeChild: Pickler](handler: MessageRouterHandler[Mat
     * @tparam CP Protocol type
     * @return Newly created channel
     */
-  def createChannel[CP <: Protocol](protocol: CP)(
-      handler: MessageChannelHandler[CP],
-      context: CP#ChannelContext,
-      materializeChild: MaterializeChild)(implicit materializeChildPickler: Pickler[MaterializeChild]): MessageChannel[CP] = {
+  def createChannel[CP <: Protocol](
+      protocol: CP)(handler: MessageChannelHandler[CP], context: CP#ChannelContext, materializeChild: MaterializeChild)(
+      implicit materializeChildPickler: Pickler[MaterializeChild]): MessageChannel[CP] = {
     val channelId       = channelIdx.getAndIncrement()
     val channelGlobalId = router.nextGlobalId
     val channel         = new MessageChannel(protocol)(channelId, channelGlobalId, this, handler, context)
@@ -365,7 +365,9 @@ class MessageRouter[MaterializeChild: Pickler](handler: MessageRouterHandler[Mat
     channel
   }
 
-  protected[core] override def materializeChildChannel(channelId: Int, globalId: Int, channelReader: ChannelReader): MessageChannelBase = {
+  protected[core] override def materializeChildChannel(channelId: Int,
+                                                       globalId: Int,
+                                                       channelReader: ChannelReader): MessageChannelBase = {
     val subMetadata = channelReader.read[MaterializeChild]
     val channel     = handler.materializeChildChannel(channelId, globalId, this, subMetadata, channelReader).get
     channel

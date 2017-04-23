@@ -11,7 +11,7 @@ import scala.annotation.implicitNotFound
   * @tparam P Protocol type
   */
 @implicitNotFound("Message of type ${M} is not valid for protocol ${P}")
-trait MessageWitness[-M <: Message, P <: Protocol]
+trait MessageWitness[-M <: Message, P <: Protocol] extends DummyImplicit
 
 /**
   * A `Protocol` is used to define the communication protocol on a `MessageChannel`
@@ -91,11 +91,12 @@ trait Protocol {
   /**
     * Helper function to define a protocol composed of multiple message types
     */
-  protected def defineProtocol[M1 <: Message, M2 <: Message, M3 <: Message, M4 <: Message, M5 <: Message](cp1: CompositePickler[M1],
-                                                                                                          cp2: CompositePickler[M2],
-                                                                                                          cp3: CompositePickler[M3],
-                                                                                                          cp4: CompositePickler[M4],
-                                                                                                          cp5: CompositePickler[M5]) = (
+  protected def defineProtocol[M1 <: Message, M2 <: Message, M3 <: Message, M4 <: Message, M5 <: Message](
+      cp1: CompositePickler[M1],
+      cp2: CompositePickler[M2],
+      cp3: CompositePickler[M3],
+      cp4: CompositePickler[M4],
+      cp5: CompositePickler[M5]) = (
     new CompositePickler[Message].join(cp1).join(cp2).join(cp3).join(cp4).join(cp5),
     witnessFor[M1],
     witnessFor[M2],
