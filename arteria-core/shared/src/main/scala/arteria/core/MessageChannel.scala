@@ -161,7 +161,7 @@ class MessageChannel[P <: Protocol](val protocol: P)(
     * @param ev      Provides evidence that message is valid for the protocol `P`
     * @tparam A Type of the message
     */
-  final def send[A <: Message](message: A)(implicit ev: MessageWitness[A, P]): Unit = {
+  def send[A <: Message](message: A)(implicit ev: MessageWitness[A, P]): Unit = {
     router.send(message, globalId)(protocol.messagePickler)
   }
 
@@ -175,7 +175,7 @@ class MessageChannel[P <: Protocol](val protocol: P)(
     * @tparam CP Protocol type
     * @return Newly created channel
     */
-  final def createChannel[MaterializeChild, CP <: Protocol](protocol: CP)(
+  def createChannel[MaterializeChild, CP <: Protocol](protocol: CP)(
       handler: MessageChannelHandler[CP],
       context: CP#ChannelContext,
       materializeChild: MaterializeChild)(implicit materializeChildPickler: Pickler[MaterializeChild]): MessageChannel[CP] = {
