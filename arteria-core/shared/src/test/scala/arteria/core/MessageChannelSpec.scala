@@ -1,10 +1,10 @@
 package arteria.core
 
 import java.nio.{ByteBuffer, ByteOrder}
+import org.scalamock.scalatest.MockFactory
 
 import boopickle.Default._
 import boopickle.{DecoderSpeed, EncoderSpeed}
-
 import arteria.UnitSpec
 
 sealed trait MainChannelMetadata
@@ -142,7 +142,7 @@ class TestRouterHandler(val systemHandler: MessageChannelHandler[SystemProtocol.
   }
 }
 
-class MessageChannelSpec extends UnitSpec {
+class MessageChannelSpec extends UnitSpec with MockFactory {
   import SystemProtocol._
 
   def routerHandler(systemHandler: MessageChannelHandler[SystemProtocol.type]) = new TestRouterHandler(systemHandler)
@@ -195,7 +195,7 @@ class MessageChannelSpec extends UnitSpec {
     msg shouldBe EstablishRoute(true)
     uState.dec.readInt shouldBe (RouterChannelId | MessageTag)
     msg = uState.unpickle[RouterMessage]
-    msg shouldBe EstablishChannel(0x1000, 1, 0)
+    msg shouldBe EstablishChannel(1, 1, 0)
     val md = uState.unpickle[MainChannelMetadata]
     md shouldBe CreateSystemChannel
     val ctx = uState.unpickle[SystemChannelContext]
@@ -221,7 +221,7 @@ class MessageChannelSpec extends UnitSpec {
     val startTag = uState.dec.readInt
     startTag shouldBe MessageRouter.StartTag
     val channelId = uState.dec.readInt
-    channelId shouldBe (0x1000 | MessageTag)
+    channelId shouldBe ((1 << MessageShift) | MessageTag)
     val msg = uState.unpickle[Message]
     msg shouldBe System1(5)
     val endTag = uState.dec.readInt
@@ -269,4 +269,5 @@ class MessageChannelSpec extends UnitSpec {
     runRouters(routerA, routerB)
     randomHandler.receivedValue shouldBe 9
   }
+
 }

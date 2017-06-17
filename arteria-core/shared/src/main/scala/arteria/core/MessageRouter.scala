@@ -8,10 +8,11 @@ import boopickle.Default._
 import scala.collection.immutable.IntMap
 
 object MessageRouter {
-  final val MessageTag      = 0x10000000
-  final val MessageMask     = 0x0FFFFFFF
-  final val StartTag        = 0x20000000
-  final val EndTag          = 0x30000000
+  final val MessageTag      = 0x1
+  final val MessageMask     = 0xFFFFFFF0
+  final val MessageShift    = 4
+  final val StartTag        = 0x2
+  final val EndTag          = 0x3
   final val RouterChannelId = 0
 
   sealed trait ChannelState {
@@ -119,7 +120,7 @@ class MessageRouter[MaterializeChild: Pickler](handler: MessageRouterHandler[Mat
   import MessageRouter._
 
   protected[core] var globalChannels     = IntMap[Channel](0 -> Channel(this, StateOpening))
-  protected[core] val globalChannelIdx   = new AtomicInteger(if (isPrimary) 0x1000 else 0x08001000)
+  protected[core] val globalChannelIdx   = new AtomicInteger(if (isPrimary) 1 else 2)
   protected var pickleState: PickleState = _
   protected var pendingCount             = 0
 
@@ -198,7 +199,7 @@ class MessageRouter[MaterializeChild: Pickler](handler: MessageRouterHandler[Mat
       val tag = unpickleState.dec.readInt
       tag & ~MessageMask match {
         case MessageTag =>
-          val channelId = tag & MessageMask
+          val channelId = (tag & MessageMask) >> MessageShift
           globalChannels.get(channelId) match {
             case Some(Channel(channel, state)) if state == StateOpening || state == StateEstablished =>
               channel.receive(new ChannelReaderImpl(unpickleState))
@@ -235,7 +236,7 @@ class MessageRouter[MaterializeChild: Pickler](handler: MessageRouterHandler[Mat
     globalChannels.get(channelGlobalId) match {
       case Some(Channel(channel, state)) if state.canSend =>
         pendingCount += 1
-        pickleState.enc.writeInt(channelGlobalId | MessageTag)
+        pickleState.enc.writeInt((channelGlobalId << MessageShift) | MessageTag)
         pickleState.pickle(message)
         handler.messagesPending(pendingCount)
       case _ =>
@@ -314,7 +315,7 @@ class MessageRouter[MaterializeChild: Pickler](handler: MessageRouterHandler[Mat
     }
   }
 
-  override def nextGlobalId: Int = globalChannelIdx.getAndIncrement()
+  override def nextGlobalId: Int = globalChannelIdx.getAndAdd(2)
 
   override def establishChannel[C, MD](channel: MessageChannelBase, context: C, metadata: MD)(
       implicit cPickler: Pickler[C],

@@ -25,7 +25,8 @@ val commonSettings = Seq(
   scalacOptions in Compile -= "-Ywarn-value-discard",
   scalacOptions in (Compile, doc) -= "-Xfatal-warnings",
   libraryDependencies ++= Seq(
-    "org.scalatest" %%% "scalatest" % "3.0.1" % "test"
+    "org.scalatest" %%% "scalatest" % "3.0.1" % Test,
+    "org.scalamock" %%% "scalamock-scalatest-support" % "3.5.0" % Test
   ),
   resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 )

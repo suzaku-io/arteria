@@ -3,7 +3,7 @@ package arteria.core
 import java.nio.ByteBuffer
 
 import boopickle.Default.{PickleState, UnpickleState}
-import boopickle.{DecoderSpeed, EncoderSpeed, PickleState, UnpickleState}
+import boopickle._
 
 /**
   * External interface for the router.
@@ -15,12 +15,12 @@ trait MessageRouterHandler[MaterializeChild] {
   /**
     * Builds a new instance of `PickleState` when needed for pickling messages.
     */
-  def pickleStateFactory: PickleState = new PickleState(new EncoderSpeed(), false, false)
+  def pickleStateFactory: PickleState = new PickleState(new EncoderSize(), false, false)
 
   /**
     * Builds a new instance of `UnpickleState` when needed for unpickling messages.
     */
-  def unpickleStateFactory(bb: ByteBuffer): UnpickleState = new UnpickleState(new DecoderSpeed(bb), false, false)
+  def unpickleStateFactory(bb: ByteBuffer): UnpickleState = new UnpickleState(new DecoderSize(bb), false, false)
 
   /**
     * Called when a new child channel needs to be created under the router.
